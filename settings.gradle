@@ -1,0 +1,10 @@
+rootProject.name = 'hub-delivery-system'
+
+include 'common-module'
+include 'eureka-server'
+include 'gateway-service'
+include 'user-service'
+include 'hub-service'
+include 'company-product-service'
+include 'order-delivery-service'
+include 'slack-ai-service'
