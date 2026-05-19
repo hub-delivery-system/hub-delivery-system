@@ -1,4 +1,6 @@
 ---
+name: "작업 이슈"
+about: "작업 단위 이슈를 작성합니다."
 title: "[TYPE] 제목을 입력하세요"
 labels: '오른쪽에서 선택'
 assignees: '오른쪽에서 선택'
