@@ -29,7 +29,7 @@ public record ApiResponse<T>(
     }
 
     public static ApiResponse<Void> error(ErrorCode errorCode) {
-        return error(errorCode, errorCode.getDefaultMessage());
+        return error(errorCode, errorCode.getMessage());
     }
 
     public static ApiResponse<Void> error(ErrorCode errorCode, String message) {
@@ -39,6 +39,10 @@ public record ApiResponse<T>(
                 null,
                 null
         );
+    }
+
+    public static ApiResponse<Void> validationError(String message, List<FieldError> errors) {
+        return new ApiResponse<>(400, message, null, errors);
     }
 
     public record FieldError(String field, String message) {
