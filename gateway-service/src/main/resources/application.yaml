@@ -13,7 +13,6 @@ server:
 eureka:
   client:
     service-url:
-      # docker-compose 작업 후 localhost를  서비스명으로 변경
-      defaultZone: http://localhost:19090/eureka/
+      defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:19090}/eureka/
     register-with-eureka: true
     fetch-registry: true
