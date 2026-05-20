@@ -9,64 +9,94 @@ spring:
     gateway:
       routes:
         - id: user-service
-          uri: lb://user-service
+          uri: lb://USER-SERVICE
           predicates:
             - Path=/api/v1/users/**
 
         - id: user-service
-          uri: lb://user-service
+          uri: lb://USER-SERVICE
           predicates:
             - Path=/api/v1/auth/**
 
+        - id: user-service
+          uri: lb://USER-SERVICE
+          predicates:
+            - Path=/user-service/v3/api-docs
+
         - id: hub-service
-          uri: lb://hub-service
+          uri: lb://HUB-SERVICE
           predicates:
             - Path=/api/v1/hubs/**
 
         - id: hub-service
-          uri: lb://hub-service
+          uri: lb://HUB-SERVICE
           predicates:
             - Path=/api/v1/transfers/**
 
+        - id: hub-service
+          uri: lb://HUB-SERVICE
+          predicates:
+            - Path=/hub-service/v3/api-docs
+
         - id: company-product-service
-          uri: lb://company-product-service
+          uri: lb://COMPANY-PRODUCT-SERVICE
           predicates:
             - Path=/api/v1/companies/**
 
         - id: company-product-service
-          uri: lb://company-product-service
+          uri: lb://COMPANY-PRODUCT-SERVICE
           predicates:
             - Path=/api/v1/products/**
 
-        - id: order-delivery-service
-          uri: lb://order-delivery-service
+        - id: company-product-service
+          uri: lb://COMPANY-PRODUCT-SERVICE
           predicates:
-            - Path=/api/v1/orders
+            - Path=/company-product-service/v3/api-docs
 
         - id: order-delivery-service
-          uri: lb://order-delivery-service
+          uri: lb://ORDER-DELIVERY-SERVICE
+          predicates:
+            - Path=/api/v1/orders/**
+
+        - id: order-delivery-service
+          uri: lb://ORDER-DELIVERY-SERVICE
           predicates:
             - Path=/api/v1/deliveries/**
 
         - id: order-delivery-service
-          uri: lb://order-delivery-service
+          uri: lb://ORDER-DELIVERY-SERVICE
           predicates:
             - Path=/api/v1/delivery-routes/**
 
         - id: order-delivery-service
-          uri: lb://order-delivery-service
+          uri: lb://ORDER-DELIVERY-SERVICE
           predicates:
             - Path=/api/v1/delivery-managers/**
 
+        - id: oreder-delivery-service
+          uri: lb://ORDER-DELIVERY-SERVICE
+          predicates:
+            - Path=/order-delivery-service/v3/api-docs
+
         - id: slack-ai-service
-          uri: lb://slack-ai-service
+          uri: lb://SLACK-AI-SERVICE
           predicates:
             - Path=/api/v1/slack-messages/**
 
         - id: slack-ai-service
-          uri: lb://slack-ai-service
+          uri: lb://SLACK-AI-SERVICE
           predicates:
             - Path=/api/v1/ai-messages/**
+
+        - id: slack-ai-service
+          uri: lb://SLACK-AI-SERVICE
+          predicates:
+            - Path=/slack-ai-service/v3/api-docs
+
+        - id: test-service
+          uri: lb://TEST-SERVICE
+          predicates:
+            - Path=/test
 
 server:
   port: 19010
@@ -77,3 +107,35 @@ eureka:
       defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:19090}/eureka/
     register-with-eureka: true
     fetch-registry: true
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: user-service
+        url: /user-service/v3/api-docs
+
+      - name: hub-service
+        url: /hub-service/v3/api-docs
+
+      - name: company-product-service
+        url: /company-product-service/v3/api-docs
+
+      - name: order-delivery-service
+        url: /order-delivery-service/v3/api-docs
+
+      - name: slack-ai-service
+        url: /slack-ai-service/v3/api-docs
+
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:}, traceId=%X{traceId:-}, spanId=%X{spanId:-}]"
+
+management:
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      enabled: false
