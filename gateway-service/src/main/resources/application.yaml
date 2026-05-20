@@ -7,88 +7,91 @@ spring:
       lower-case-service-id: true
   cloud:
     gateway:
+      httpclient:
+        connect-timeout: 2000
+        response-timeout: 10s
       routes:
-        - id: user-service
+        - id: user-service-users
           uri: lb://USER-SERVICE
           predicates:
             - Path=/api/v1/users/**
 
-        - id: user-service
+        - id: user-service-auth
           uri: lb://USER-SERVICE
           predicates:
             - Path=/api/v1/auth/**
 
-        - id: user-service
+        - id: user-service-docs
           uri: lb://USER-SERVICE
           predicates:
             - Path=/user-service/v3/api-docs
 
-        - id: hub-service
+        - id: hub-service-hubs
           uri: lb://HUB-SERVICE
           predicates:
             - Path=/api/v1/hubs/**
 
-        - id: hub-service
+        - id: hub-service-transfers
           uri: lb://HUB-SERVICE
           predicates:
             - Path=/api/v1/transfers/**
 
-        - id: hub-service
+        - id: hub-service-docs
           uri: lb://HUB-SERVICE
           predicates:
             - Path=/hub-service/v3/api-docs
 
-        - id: company-product-service
+        - id: company-product-service-companies
           uri: lb://COMPANY-PRODUCT-SERVICE
           predicates:
             - Path=/api/v1/companies/**
 
-        - id: company-product-service
+        - id: company-product-service-products
           uri: lb://COMPANY-PRODUCT-SERVICE
           predicates:
             - Path=/api/v1/products/**
 
-        - id: company-product-service
+        - id: company-product-service-docs
           uri: lb://COMPANY-PRODUCT-SERVICE
           predicates:
             - Path=/company-product-service/v3/api-docs
 
-        - id: order-delivery-service
+        - id: order-delivery-service-orders
           uri: lb://ORDER-DELIVERY-SERVICE
           predicates:
             - Path=/api/v1/orders/**
 
-        - id: order-delivery-service
+        - id: order-delivery-service-deliveries
           uri: lb://ORDER-DELIVERY-SERVICE
           predicates:
             - Path=/api/v1/deliveries/**
 
-        - id: order-delivery-service
+        - id: order-delivery-service-routes
           uri: lb://ORDER-DELIVERY-SERVICE
           predicates:
             - Path=/api/v1/delivery-routes/**
 
-        - id: order-delivery-service
+        - id: order-delivery-service-managers
           uri: lb://ORDER-DELIVERY-SERVICE
           predicates:
             - Path=/api/v1/delivery-managers/**
 
-        - id: oreder-delivery-service
+        - id: order-delivery-service-docs
           uri: lb://ORDER-DELIVERY-SERVICE
           predicates:
             - Path=/order-delivery-service/v3/api-docs
 
-        - id: slack-ai-service
+        - id: slack-ai-service-slack
           uri: lb://SLACK-AI-SERVICE
           predicates:
             - Path=/api/v1/slack-messages/**
 
-        - id: slack-ai-service
+        - id: slack-ai-service-ai
           uri: lb://SLACK-AI-SERVICE
           predicates:
             - Path=/api/v1/ai-messages/**
 
-        - id: slack-ai-service
+        - id: slack-ai-service-docs
           uri: lb://SLACK-AI-SERVICE
           predicates:
             - Path=/slack-ai-service/v3/api-docs
@@ -96,7 +99,7 @@ spring:
         - id: test-service
           uri: lb://TEST-SERVICE
           predicates:
-            - Path=/test
+            - Path=/test/**
 
 server:
   port: 19010
@@ -126,6 +129,9 @@ springdoc:
 
       - name: slack-ai-service
         url: /slack-ai-service/v3/api-docs
+
+jwt:
+  secret-key: "${JWT_SECRET_KEY:dGVzdC1qd3Qtc2VjcmV0LWtleS10ZXN0LWp3dC1zZWNyZXQ=}"
 
 logging:
   pattern:
