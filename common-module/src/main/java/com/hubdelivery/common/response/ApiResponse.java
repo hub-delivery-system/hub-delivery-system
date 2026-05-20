@@ -8,6 +8,7 @@ import java.util.List;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public record ApiResponse<T>(
         int status,
+        String code,
         String message,
         T data,
         List<FieldError> errors
@@ -17,15 +18,11 @@ public record ApiResponse<T>(
     private static final String CREATED_MESSAGE = "CREATED";
 
     public static <T> ApiResponse<T> ok(T data) {
-        return new ApiResponse<>(200, SUCCESS_MESSAGE, data, null);
+        return new ApiResponse<>(200, null, SUCCESS_MESSAGE, data, null);
     }
 
     public static <T> ApiResponse<T> created(T data) {
-        return new ApiResponse<>(201, CREATED_MESSAGE, data, null);
-    }
-
-    public static ApiResponse<Void> error(int status, String message) {
-        return new ApiResponse<>(status, message, null, null);
+        return new ApiResponse<>(201, null, CREATED_MESSAGE, data, null);
     }
 
     public static ApiResponse<Void> error(ErrorCode errorCode) {
@@ -35,14 +32,21 @@ public record ApiResponse<T>(
     public static ApiResponse<Void> error(ErrorCode errorCode, String message) {
         return new ApiResponse<>(
                 errorCode.getStatus().value(),
+                errorCode.getCode(),
                 message,
                 null,
                 null
         );
     }
 
-    public static ApiResponse<Void> validationError(String message, List<FieldError> errors) {
-        return new ApiResponse<>(400, message, null, errors);
+    public static ApiResponse<Void> validationError(ErrorCode errorCode, List<FieldError> errors) {
+        return new ApiResponse<>(
+                errorCode.getStatus().value(),
+                errorCode.getCode(),
+                errorCode.getMessage(),
+                null,
+                errors
+        );
     }
 
     public record FieldError(String field, String message) {
