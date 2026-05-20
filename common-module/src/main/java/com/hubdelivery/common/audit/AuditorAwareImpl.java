@@ -1,27 +1,31 @@
 package com.hubdelivery.common.audit;
 
-import java.util.Optional;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.AuditorAware;
-import org.springframework.security.authentication.AnonymousAuthenticationToken;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.context.request.RequestAttributes;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
+import java.util.Optional;
 
 public class AuditorAwareImpl implements AuditorAware<String> {
 
     public static final String SYSTEM_AUDITOR = "SYSTEM";
+    public static final String X_USER_ID = "X-User-Id";
 
     @Override
     public Optional<String> getCurrentAuditor() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-
-        if (authentication == null
-                || !authentication.isAuthenticated()
-                || authentication instanceof AnonymousAuthenticationToken) {
-            return Optional.of(SYSTEM_AUDITOR);
-        }
-
-        return Optional.ofNullable(authentication.getName())
-                .filter(username -> !username.isBlank())
+        return currentRequest()
+                .map(request -> request.getHeader(X_USER_ID))
+                .filter(userId -> !userId.isBlank())
                 .or(() -> Optional.of(SYSTEM_AUDITOR));
+    }
+
+    private Optional<HttpServletRequest> currentRequest() {
+        RequestAttributes attributes = RequestContextHolder.getRequestAttributes();
+        if (attributes instanceof ServletRequestAttributes servletAttributes) {
+            return Optional.of(servletAttributes.getRequest());
+        }
+        return Optional.empty();
     }
 }
