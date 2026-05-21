@@ -96,11 +96,6 @@ spring:
           predicates:
             - Path=/slack-ai-service/v3/api-docs
 
-        - id: test-service
-          uri: lb://TEST-SERVICE
-          predicates:
-            - Path=/test/**
-
 server:
   port: 19010
 
@@ -137,11 +132,12 @@ logging:
   pattern:
     level: "%5p [${spring.application.name:}, traceId=%X{traceId:-}, spanId=%X{spanId:-}]"
 
+# TODO: 운영 환경에 맞게 조정 필요
 management:
   tracing:
     enabled: true
     sampling:
-      probability: 1.0
+      probability: 1.0  # 임시 전체 샘플링 - 운영 시 0.1 수준으로 낮출 것
   zipkin:
     tracing:
-      enabled: false
+      enabled: false  # Zipkin 미구성 환경에서 임시 비활성화 - 운영 시 활성화 및 endpoint 설정 필요

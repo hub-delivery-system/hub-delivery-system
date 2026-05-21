@@ -1,9 +1,7 @@
 package com.hubdelivery.gatewayservice.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hubdelivery.gatewayservice.exception.ErrorResponse;
-import com.hubdelivery.gatewayservice.exception.GatewayErrorCode;
-import lombok.RequiredArgsConstructor;
+import java.util.List;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.buffer.DataBuffer;
@@ -13,9 +11,13 @@ import org.springframework.security.config.web.server.ServerHttpSecurity;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.server.ServerWebExchange;
-import reactor.core.publisher.Mono;
 
-import java.util.List;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hubdelivery.gatewayservice.exception.ErrorResponse;
+import com.hubdelivery.gatewayservice.exception.GatewayErrorCode;
+
+import lombok.RequiredArgsConstructor;
+import reactor.core.publisher.Mono;
 
 @Configuration
 @EnableWebFluxSecurity
@@ -45,8 +47,7 @@ public class SecurityConfig {
 					"/swagger-ui.html",
 					"/swagger-ui/**",
 					"/v3/api-docs/**",
-					"/eureka/**",
-					"/test/**"
+					"/eureka/**"
 				).permitAll()
 				.anyExchange().authenticated()
 			)
