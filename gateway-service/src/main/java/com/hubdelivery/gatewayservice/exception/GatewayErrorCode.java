@@ -16,6 +16,8 @@ public enum GatewayErrorCode {
     TOKEN_UNSUPPORTED(HttpStatus.UNAUTHORIZED, "GATEWAY-103", "지원하지 않는 토큰입니다."),
     TOKEN_EMPTY(HttpStatus.UNAUTHORIZED, "GATEWAY-104", "토큰 값이 비어 있습니다."),
 
+    FORBIDDEN(HttpStatus.FORBIDDEN, "GATEWAY-201", "접근 권한이 없습니다."),
+
     GATEWAY_ERROR(HttpStatus.BAD_GATEWAY, "GATEWAY-901", "게이트웨이 오류가 발생했습니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "GATEWAY-999", "서버 내부 오류가 발생했습니다.");
 
