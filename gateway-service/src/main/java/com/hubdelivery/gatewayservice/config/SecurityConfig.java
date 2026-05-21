@@ -46,7 +46,14 @@ public class SecurityConfig {
 					"/api/v1/auth/**",
 					"/swagger-ui.html",
 					"/swagger-ui/**",
+					"/webjars/**",
 					"/v3/api-docs/**",
+					"/user-service/v3/api-docs",
+					"/hub-service/v3/api-docs",
+					"/company-product-service/v3/api-docs",
+					"/order-service/v3/api-docs",
+					"/delivery-service/v3/api-docs",
+					"/slack-ai-service/v3/api-docs",
 					"/eureka/**"
 				).permitAll()
 				.anyExchange().authenticated()
