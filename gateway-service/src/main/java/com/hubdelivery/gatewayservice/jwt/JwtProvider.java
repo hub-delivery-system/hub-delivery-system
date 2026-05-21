@@ -1,32 +1,41 @@
 package com.hubdelivery.gatewayservice.jwt;
 
-import javax.crypto.SecretKey;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
-
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.io.Decoders;
-import io.jsonwebtoken.security.Keys;
 
 @Component
 public class JwtProvider {
 
-	@Value("${jwt.secret-key}")
-	private String secretKey;
+	// TODO: Keycloak 시스템 역할 목록 - Keycloak 버전이나 realm 설정에 따라 추가될 수 있음
+	private static final Set<String> SYSTEM_ROLES = Set.of("offline_access", "uma_authorization");
+	// TODO: Docker Compose에서 realm 이름 확정 후 prefix가 맞는지 확인 (default-roles-{realm명} 형식)
+	private static final String DEFAULT_ROLES_PREFIX = "default-roles-";
 
-	private SecretKey getSigningKey() {
-		byte[] keyBytes = Decoders.BASE64.decode(secretKey);
-
-		return Keys.hmacShaKeyFor(keyBytes);
+	public String extractUserId(Jwt jwt) {
+		return jwt.getSubject();
 	}
 
-	public Claims validateToken(String token) {
-		return Jwts.parser()
-			.verifyWith(getSigningKey())
-			.build()
-			.parseSignedClaims(token)
-			.getPayload();
+	public String extractRole(Jwt jwt) {
+		Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
+		if (realmAccess == null) {
+			return null;
+		}
+
+		Object rolesObj = realmAccess.get("roles");
+		if (!(rolesObj instanceof List<?> rawRoles)) {
+			return null;
+		}
+
+		return rawRoles.stream()
+			.filter(r -> r instanceof String)
+			.map(r -> (String) r)
+			.filter(r -> !SYSTEM_ROLES.contains(r))
+			.filter(r -> !r.startsWith(DEFAULT_ROLES_PREFIX))
+			.findFirst()
+			.orElse(null);
 	}
 }
