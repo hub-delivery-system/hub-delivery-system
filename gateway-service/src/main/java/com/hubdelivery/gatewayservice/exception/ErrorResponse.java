@@ -1,10 +1,19 @@
 package com.hubdelivery.gatewayservice.exception;
 
-import org.springframework.http.HttpStatus;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
-public record ErrorResponse(int status, String code, String message) {
+import java.util.List;
 
-	public static ErrorResponse of(HttpStatus httpStatus, String code, String message) {
-		return new ErrorResponse(httpStatus.value(), code, message);
-	}
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public record ErrorResponse(
+        int status,
+        String code,
+        String message,
+        Object data,
+        List<?> errors
+) {
+
+    public static ErrorResponse of(GatewayErrorCode errorCode) {
+        return new ErrorResponse(errorCode.getStatus().value(), errorCode.getCode(), errorCode.getMessage(), null, null);
+    }
 }
