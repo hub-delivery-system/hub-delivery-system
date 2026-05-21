@@ -1,7 +1,5 @@
 package com.hubdelivery.gatewayservice.jwt;
 
-import java.nio.charset.StandardCharsets;
-
 import javax.crypto.SecretKey;
 
 import org.springframework.beans.factory.annotation.Value;
