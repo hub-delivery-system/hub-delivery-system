@@ -1,5 +1,7 @@
 package com.hubdelivery.hub.domain.entity;
 
+import com.hubdelivery.common.entity.BaseEntity;
+
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -7,12 +9,17 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 @Entity
-@Table(name="p_hub")
+@Table(
+        name = "p_hub",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_latitude_longitude",
+                columnNames = {"latitude", "longitude"}
+        )
+)
 @NoArgsConstructor(access= AccessLevel.PROTECTED)
 @Getter
-@Builder
 @AllArgsConstructor
-public class HubEntity {
+public class HubEntity extends BaseEntity{
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -20,16 +27,30 @@ public class HubEntity {
     private UUID id;
 
     @Column(name="hub_name",length = 100, nullable = false)
-    private String HubName;
+    private String hubName;
 
 
     @Column(name="address",length = 255, nullable = false)
-    private String Address;
+    private String address;
 
     @Column(name = "latitude",precision = 10, scale = 7,nullable = false)
-    private BigDecimal Latitude;
+    private BigDecimal latitude;
 
     @Column(name="longitude",precision = 10, scale = 7,nullable = false)
-    private BigDecimal Longitude;
+    private BigDecimal longitude;
+
+
+    @Builder
+    public HubEntity(
+            String hubName,
+            String address,
+            BigDecimal latitude,
+            BigDecimal longitude
+    ) {
+        this.hubName = hubName;
+        this.address = address;
+        this.latitude = latitude;
+        this.longitude = longitude;
+    }
 
 }
