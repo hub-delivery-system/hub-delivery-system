@@ -4,17 +4,17 @@ import java.util.List;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.http.MediaType;
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.reactive.EnableWebFluxSecurity;
 import org.springframework.security.config.web.server.ServerHttpSecurity;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.web.server.SecurityWebFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.server.ServerWebExchange;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.hubdelivery.gatewayservice.exception.ErrorResponse;
 import com.hubdelivery.gatewayservice.exception.GatewayErrorCode;
+import com.hubdelivery.gatewayservice.exception.GatewayErrorWriter;
 
 import lombok.RequiredArgsConstructor;
 import reactor.core.publisher.Mono;
@@ -24,7 +24,7 @@ import reactor.core.publisher.Mono;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-	private final ObjectMapper objectMapper;
+	private final GatewayErrorWriter errorWriter;
 
 	@Bean
 	public SecurityWebFilterChain securityWebFilterChain(ServerHttpSecurity http) {
@@ -58,25 +58,29 @@ public class SecurityConfig {
 				).permitAll()
 				.anyExchange().authenticated()
 			)
+			.oauth2ResourceServer(oauth2 -> oauth2
+				.jwt(Customizer.withDefaults())
+				// 유효하지 않은 토큰(만료, 서명 오류 등)에 대한 응답
+				.authenticationEntryPoint((exchange, e) -> resolveTokenError(exchange, e))
+			)
 			.exceptionHandling(ex -> ex
+				// 토큰 자체가 없는 경우
 				.authenticationEntryPoint((exchange, e) ->
-					writeErrorResponse(exchange, GatewayErrorCode.TOKEN_EMPTY))
+					errorWriter.write(exchange, GatewayErrorCode.TOKEN_EMPTY))
 				.accessDeniedHandler((exchange, e) ->
-					writeErrorResponse(exchange, GatewayErrorCode.FORBIDDEN))
+					errorWriter.write(exchange, GatewayErrorCode.FORBIDDEN))
 			)
 			.build();
 	}
 
-	private Mono<Void> writeErrorResponse(ServerWebExchange exchange, GatewayErrorCode errorCode) {
-		ErrorResponse body = ErrorResponse.of(errorCode);
-		exchange.getResponse().setStatusCode(errorCode.getStatus());
-		exchange.getResponse().getHeaders().setContentType(MediaType.APPLICATION_JSON);
-		try {
-			byte[] bytes = objectMapper.writeValueAsBytes(body);
-			DataBuffer buffer = exchange.getResponse().bufferFactory().wrap(bytes);
-			return exchange.getResponse().writeWith(Mono.just(buffer));
-		} catch (Exception e) {
-			return exchange.getResponse().setComplete();
+	private Mono<Void> resolveTokenError(ServerWebExchange exchange, AuthenticationException e) {
+		if (e instanceof OAuth2AuthenticationException oae) {
+			String desc = oae.getError().getDescription();
+			// Spring Security 버전 업그레이드 시 에러 description 포맷 변경 여부 확인 필요
+			if (desc != null && desc.contains("Jwt expired")) {
+				return errorWriter.write(exchange, GatewayErrorCode.TOKEN_EXPIRED);
+			}
 		}
+		return errorWriter.write(exchange, GatewayErrorCode.TOKEN_INVALID);
 	}
 }

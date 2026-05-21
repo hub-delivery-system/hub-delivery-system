@@ -1,6 +1,14 @@
 spring:
   application:
     name: gateway-service
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # TODO: Docker Compose 작성 시 keycloak 컨테이너 주소로 변경
+          #   실제값: http://keycloak:8080/realms/{realm명}/protocol/openid-connect/certs
+          #   KEYCLOAK_JWK_SET_URI 환경변수로 docker-compose.yml에서 주입
+          jwk-set-uri: "${KEYCLOAK_JWK_SET_URI:http://localhost:8080/realms/hub-delivery/protocol/openid-connect/certs}"
   discovery:
     locator:
       enabled: true
@@ -132,9 +140,6 @@ springdoc:
 
       - name: slack-ai-service
         url: /slack-ai-service/v3/api-docs
-
-jwt:
-  secret-key: "${JWT_SECRET_KEY:dGVzdC1qd3Qtc2VjcmV0LWtleS10ZXN0LWp3dC1zZWNyZXQ=}"
 
 logging:
   pattern:
