@@ -19,8 +19,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import com.hubdelivery.common.entity.BaseEntity;
+import com.hubdelivery.common.security.UserRole;
 import com.hubdelivery.user.domain.type.AffiliationType;
-import com.hubdelivery.user.domain.type.UserRole;
 import com.hubdelivery.user.domain.type.UserStatus;
 
 @Entity

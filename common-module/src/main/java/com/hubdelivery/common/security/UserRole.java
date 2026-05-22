@@ -1,4 +1,4 @@
-package com.hubdelivery.user.domain.type;
+package com.hubdelivery.common.security;
 
 public enum UserRole {
     MASTER,
