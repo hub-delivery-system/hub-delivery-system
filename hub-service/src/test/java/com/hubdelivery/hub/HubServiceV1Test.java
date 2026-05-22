@@ -33,6 +33,7 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -159,17 +160,17 @@ class HubServiceV1Test {
             // given
             Pageable pageable = PageRequest.of(0, 10);
             Page<HubEntity> hubPage = new PageImpl<>(List.of(hubEntity));
-            given(hubRepository.findAllActive(pageable)).willReturn(hubPage);
+            given(hubRepository.searchHubs(null,pageable)).willReturn(hubPage);
             String keyword="hub01";
 
             // when
-            Page<ResGetHubDto> result = hubService.getHubs(keyword, pageable);
+            Page<ResGetHubDto> result = hubService.getHubs(null, pageable);
 
             // then
             assertThat(result).isNotNull();
             assertThat(result.getContent()).hasSize(1);
             assertThat(result.getContent().get(0).getHubName()).isEqualTo("서울허브");
-            verify(hubRepository, times(1)).findAllActive(pageable);
+            verify(hubRepository, times(1)).searchHubs(null,pageable);
         }
 
         @Test
@@ -178,8 +179,9 @@ class HubServiceV1Test {
             // given
             Pageable pageable = PageRequest.of(0, 10);
             Page<HubEntity> emptyPage = new PageImpl<>(List.of());
-            given(hubRepository.findAllActive(pageable)).willReturn(emptyPage);
             String keyword="hub01";
+            given(hubRepository.searchHubs(eq(keyword), any(Pageable.class)))
+                    .willReturn(emptyPage);
 
             // when
             Page<ResGetHubDto> result = hubService.getHubs(keyword, pageable);
