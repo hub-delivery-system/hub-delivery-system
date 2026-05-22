@@ -5,13 +5,14 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.io.Serializable;
 import java.math.BigDecimal;
 import java.util.UUID;
 
 @Getter
 @AllArgsConstructor
 @Builder
-public class ResGetHubDto {
+public class ResGetHubDto implements Serializable {
 
     private UUID hubId;
 
@@ -27,6 +28,7 @@ public class ResGetHubDto {
         return ResGetHubDto.builder()
                 .hubId(hubEntity.getId())
                 .hubName(hubEntity.getHubName())
+                .address(hubEntity.getAddress())
                 .latitude(hubEntity.getLatitude())
                 .longitude(hubEntity.getLongitude())
                 .build();

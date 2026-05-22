@@ -12,7 +12,7 @@ public class ReqHubDto {
 
     @NotBlank(message = "허브 이름은 필수입니다")
     @Size(min = 1, max = 100, message = "허브 이름은 1~100자여야 합니다")
-    private String name;
+    private String hub_name;
 
     @NotBlank(message = "주소는 필수입니다.")
     @Size(min = 1, max = 255, message = "허브 이름은 1~255자여야 합니다")
