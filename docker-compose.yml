@@ -1,0 +1,36 @@
+version: '3.8'
+
+services:
+  # 1. 메인 데이터베이스 (PostgreSQL)
+  postgres:
+    image: postgres:15-alpine
+    container_name: logistics-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123!
+      POSTGRES_DB: logistics_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - logistics-network
+
+  # 2. 인증/인프라용 데이터베이스 (Redis)
+  redis:
+    image: redis:7-alpine
+    container_name: logistics-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - logistics-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  logistics-network:
+    driver: bridge
