@@ -2,8 +2,9 @@ package com.hubdelivery.hub.application.service;
 
 import com.hubdelivery.hub.application.dto.ResGetHubDto;
 import com.hubdelivery.hub.presentation.dto.ReqHubDto;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
-import java.util.List;
 import java.util.UUID;
 
 public interface HubService {
@@ -11,13 +12,13 @@ public interface HubService {
 
     public ResGetHubDto createHub(ReqHubDto reqHubDto);
 
-    public List<ResGetHubDto> getHubs();
+    public Page<ResGetHubDto> getHubs(Pageable pageable);
 
-    public ResGetHubDto getHub(Long hubId);
+    public ResGetHubDto getHub(UUID hubId);
 
 
     // RequestDTO 생성 후  수정
-    public ResGetHubDto updateHub(UUID hubId, ResGetHubDto hub);
+    public ResGetHubDto updateHub(UUID hubId, ReqHubDto reqHubDto);
 
-    public void deleteHub(Long hubId);
+    public void deleteHub(UUID hubId);
 }

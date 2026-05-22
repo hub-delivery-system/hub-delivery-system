@@ -29,4 +29,6 @@ public class ReqHubDto {
     @DecimalMax(value = "180.0000000", inclusive = true, message = "경도는 180 이하여야 합니다")
     @Digits(integer = 2, fraction = 7, message = "위도는 정수 2자리, 소수 7자리여야 합니다")
     private BigDecimal longitude;
+
+
 }

@@ -24,4 +24,12 @@ public interface HubRepository extends JpaRepository<HubEntity, UUID> {
 
 
     boolean existsByLatitudeAndLongitude(BigDecimal latitude,BigDecimal longitude);
-}
+
+    @Query("SELECT COUNT(h) > 0 FROM HubEntity h " +
+            "WHERE h.latitude = :latitude AND h.longitude = :longitude " +
+            "AND h.id != :id AND h.deletedAt IS NULL")
+    boolean existsByLatitudeAndLongitudeExcludingId(
+            @Param("latitude") BigDecimal latitude,
+            @Param("longitude") BigDecimal longitude,
+            @Param("id") UUID id
+    );}
