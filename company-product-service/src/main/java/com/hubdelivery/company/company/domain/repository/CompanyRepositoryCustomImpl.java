@@ -2,22 +2,21 @@ package com.hubdelivery.company.company.domain.repository;
 
 import com.hubdelivery.company.company.domain.entity.Company;
 import com.hubdelivery.company.company.domain.entity.QCompany;
+import com.hubdelivery.company.global.util.QueryDslRepositoryUtils;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.Order;
 import com.querydsl.core.types.OrderSpecifier;
-import com.querydsl.core.types.dsl.DateTimePath;
-import com.querydsl.core.types.dsl.Expressions;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
+
+import static com.hubdelivery.company.global.util.QueryDslRepositoryUtils.dateTimePath;
+import static com.hubdelivery.company.global.util.QueryDslRepositoryUtils.totalOrZero;
 
 @Repository
 @RequiredArgsConstructor
@@ -37,7 +36,10 @@ public class CompanyRepositoryCustomImpl implements CompanyRepositoryCustom {
                 .where(condition)
                 .offset(pageable.getOffset())
                 .limit(pageable.getPageSize())
-                .orderBy(toOrderSpecifiers(pageable.getSort()))
+                .orderBy(QueryDslRepositoryUtils.toOrderSpecifiers(
+                        pageable.getSort(),
+                        this::toOrderSpecifier
+                ))
                 .fetch();
 
         Long total = queryFactory
@@ -46,12 +48,12 @@ public class CompanyRepositoryCustomImpl implements CompanyRepositoryCustom {
                 .where(condition)
                 .fetchOne();
 
-        return new PageImpl<>(content, pageable, total == null ? 0 : total);
+        return new PageImpl<>(content, pageable, totalOrZero(total));
     }
 
     private BooleanBuilder createSearchCondition(String keyword) {
         BooleanBuilder condition = new BooleanBuilder();
-        condition.and(dateTimePath("deletedAt").isNull());
+        condition.and(dateTimePath(COMPANY, "deletedAt").isNull());
 
         if (keyword != null) {
             condition.and(
@@ -63,27 +65,12 @@ public class CompanyRepositoryCustomImpl implements CompanyRepositoryCustom {
         return condition;
     }
 
-    private OrderSpecifier<?>[] toOrderSpecifiers(Sort sort) {
-        List<OrderSpecifier<?>> orderSpecifiers = new ArrayList<>();
-
-        for (Sort.Order sortOrder : sort) {
-            Order direction = sortOrder.isAscending() ? Order.ASC : Order.DESC;
-            orderSpecifiers.add(toOrderSpecifier(direction, sortOrder.getProperty()));
-        }
-
-        return orderSpecifiers.toArray(OrderSpecifier[]::new);
-    }
-
     private OrderSpecifier<?> toOrderSpecifier(Order direction, String property) {
         return switch (property) {
-            case "updatedAt" -> new OrderSpecifier<>(direction, dateTimePath("updatedAt"));
+            case "updatedAt" -> new OrderSpecifier<>(direction, dateTimePath(COMPANY, "updatedAt"));
             case "companyName" -> new OrderSpecifier<>(direction, COMPANY.companyName);
-            case "createdAt" -> new OrderSpecifier<>(direction, dateTimePath("createdAt"));
-            default -> new OrderSpecifier<>(Order.DESC, dateTimePath("createdAt"));
+            case "createdAt" -> new OrderSpecifier<>(direction, dateTimePath(COMPANY, "createdAt"));
+            default -> new OrderSpecifier<>(Order.DESC, dateTimePath(COMPANY, "createdAt"));
         };
-    }
-
-    private DateTimePath<LocalDateTime> dateTimePath(String property) {
-        return Expressions.dateTimePath(LocalDateTime.class, COMPANY, property);
     }
 }
