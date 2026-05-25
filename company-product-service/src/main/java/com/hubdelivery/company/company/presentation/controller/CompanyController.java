@@ -1,5 +1,6 @@
 package com.hubdelivery.company.company.presentation.controller;
 
+import com.hubdelivery.common.audit.AuditorAwareImpl;
 import com.hubdelivery.common.response.ApiResponse;
 import com.hubdelivery.common.response.PageResponse;
 import com.hubdelivery.company.company.application.service.CompanyService;
@@ -84,5 +85,20 @@ public class CompanyController {
             @Valid @RequestBody CompanyUpdateRequestDto request
     ) {
         return ApiResponse.ok(companyService.updateCompany(companyId, request));
+    }
+
+    @DeleteMapping("/{companyId}")
+    @Operation(summary = "업체 삭제", description = "업체를 삭제합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "삭제 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "업체를 찾을 수 없음")
+    })
+    public ApiResponse<Void> deleteCompany(
+            @Parameter(description = "업체 ID")
+            @PathVariable UUID companyId,
+            @RequestHeader(value = AuditorAwareImpl.X_USER_ID, defaultValue = AuditorAwareImpl.SYSTEM_AUDITOR) String deletedBy
+    ) {
+        companyService.deleteCompany(companyId, deletedBy);
+        return ApiResponse.ok(null);
     }
 }

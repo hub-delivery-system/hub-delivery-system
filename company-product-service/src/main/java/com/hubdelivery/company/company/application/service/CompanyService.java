@@ -61,6 +61,14 @@ public class CompanyService {
         return CompanyResponseDto.from(company);
     }
 
+    @Transactional
+    public void deleteCompany(UUID companyId, String deletedBy) {
+        Company company = companyRepository.findByIdAndDeletedAtIsNull(companyId)
+                .orElseThrow(CompanyNotFoundException::new);
+
+        company.softDelete(deletedBy);
+    }
+
     private Pageable createPageable(Integer page, Integer size, String sort) {
         int pageNumber = page == null ? 0 : page;
         int pageSize = size == null ? PageableUtils.DEFAULT_SIZE : size;
