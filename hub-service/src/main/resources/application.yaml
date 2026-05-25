@@ -44,7 +44,7 @@ logging:
     com.hubdelivery.hub: DEBUG
     org.springframework.cache: DEBUG  # 캐시 로깅
   pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId:-},%X{spanId:-}] %-5level %logger{36} - %msg%n"
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [traceId=%X{traceId:-},spanId=%X{spanId:-}] %-5level %logger{36} - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] [%X{traceId:-},%X{spanId:-}] %-5level %logger{36} - %msg%n"
   file:
     name: logs/${spring.application.name}.log
@@ -53,6 +53,13 @@ logging:
 
 #Actuator 설정
 management:
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      enabled: false
   endpoints:
     web:
       exposure:
