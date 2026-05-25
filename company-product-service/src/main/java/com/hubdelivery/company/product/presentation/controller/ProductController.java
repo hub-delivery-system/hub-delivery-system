@@ -1,9 +1,11 @@
 package com.hubdelivery.company.product.presentation.controller;
 
+import com.hubdelivery.common.audit.AuditorAwareImpl;
 import com.hubdelivery.common.response.ApiResponse;
 import com.hubdelivery.common.response.PageResponse;
 import com.hubdelivery.company.product.application.service.ProductService;
 import com.hubdelivery.company.product.presentation.dto.request.ProductCreateRequestDto;
+import com.hubdelivery.company.product.presentation.dto.request.ProductUpdateRequestDto;
 import com.hubdelivery.company.product.presentation.dto.response.ProductResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -12,10 +14,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -74,5 +79,35 @@ public class ProductController {
             @PathVariable UUID productId
     ) {
         return ApiResponse.ok(productService.getProduct(productId));
+    }
+
+    @PutMapping("/{productId}")
+    @Operation(summary = "상품 수정", description = "상품 정보를 수정합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "수정 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 본문 검증 실패"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "상품 또는 상품 업체를 찾을 수 없음")
+    })
+    public ApiResponse<ProductResponseDto> updateProduct(
+            @Parameter(description = "상품 ID")
+            @PathVariable UUID productId,
+            @Valid @RequestBody ProductUpdateRequestDto request
+    ) {
+        return ApiResponse.ok(productService.updateProduct(productId, request));
+    }
+
+    @DeleteMapping("/{productId}")
+    @Operation(summary = "상품 삭제", description = "상품을 삭제합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "삭제 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "상품을 찾을 수 없음")
+    })
+    public ApiResponse<Void> deleteProduct(
+            @Parameter(description = "상품 ID")
+            @PathVariable UUID productId,
+            @RequestHeader(value = AuditorAwareImpl.X_USER_ID, defaultValue = AuditorAwareImpl.SYSTEM_AUDITOR) String deletedBy
+    ) {
+        productService.deleteProduct(productId, deletedBy);
+        return ApiResponse.ok(null);
     }
 }

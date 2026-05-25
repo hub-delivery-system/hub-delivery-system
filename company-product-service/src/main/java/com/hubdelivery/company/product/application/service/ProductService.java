@@ -8,6 +8,7 @@ import com.hubdelivery.company.product.domain.exception.ProductCompanyNotFoundEx
 import com.hubdelivery.company.product.domain.exception.ProductNotFoundException;
 import com.hubdelivery.company.product.domain.repository.ProductRepository;
 import com.hubdelivery.company.product.presentation.dto.request.ProductCreateRequestDto;
+import com.hubdelivery.company.product.presentation.dto.request.ProductUpdateRequestDto;
 import com.hubdelivery.company.product.presentation.dto.response.ProductResponseDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -30,7 +31,7 @@ public class ProductService {
     @Transactional
     public ProductResponseDto createProduct(ProductCreateRequestDto request) {
         // TODO: HubClient 확정 후 hubId 존재 여부와 HUB_MANAGER 담당 허브 여부를 검증한다.
-        validateCompanyExists(request);
+        validateCompanyExists(request.companyId());
 
         Product product = productRepository.save(request.toEntity());
         return ProductResponseDto.from(product);
@@ -51,8 +52,30 @@ public class ProductService {
                 .orElseThrow(ProductNotFoundException::new));
     }
 
-    private void validateCompanyExists(ProductCreateRequestDto request) {
-        if (companyRepository.findByIdAndDeletedAtIsNull(request.companyId()).isEmpty()) {
+    /** 상품 수정 로직 */
+    @Transactional
+    public ProductResponseDto updateProduct(UUID productId, ProductUpdateRequestDto request) {
+        // TODO: HubClient 확정 후 hubId 존재 여부와 HUB_MANAGER 담당 허브 여부를 검증한다.
+        validateCompanyExists(request.companyId());
+
+        Product product = productRepository.findByIdAndDeletedAtIsNull(productId)
+                .orElseThrow(ProductNotFoundException::new);
+        product.update(request.productName(), request.hubId(), request.companyId());
+
+        return ProductResponseDto.from(product);
+    }
+
+    /** 상품 삭제 로직 */
+    @Transactional
+    public void deleteProduct(UUID productId, String deletedBy) {
+        Product product = productRepository.findByIdAndDeletedAtIsNull(productId)
+                .orElseThrow(ProductNotFoundException::new);
+
+        product.softDelete(deletedBy);
+    }
+
+    private void validateCompanyExists(UUID companyId) {
+        if (companyRepository.findByIdAndDeletedAtIsNull(companyId).isEmpty()) {
             throw new ProductCompanyNotFoundException();
         }
     }
