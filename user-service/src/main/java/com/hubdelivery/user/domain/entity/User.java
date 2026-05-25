@@ -71,6 +71,34 @@ public class User extends BaseEntity {
         }
     }
 
+    private User (
+            String username,
+            String slackId,
+            String password,
+            AffiliationType affiliationType,
+            String affiliationName
+    ) {
+        this.username = username;
+        this.slackId = slackId;
+        this.password = password;
+        this.affiliationType = affiliationType;
+        this.affiliationName = affiliationName;
+    }
 
+    public static User createPending (
+            String username,
+            String slackId,
+            String password,
+            AffiliationType affiliationType,
+            String affiliationName
+    ) {
+        User user = new User(username, slackId, password, affiliationType, affiliationName);
+        user.status = UserStatus.PENDING;
+        user.role = null;
+        user.hubId = null;
+        user.companyId = null;
+
+        return user;
+    }
 
 }
