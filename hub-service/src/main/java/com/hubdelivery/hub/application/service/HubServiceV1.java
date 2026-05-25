@@ -149,7 +149,7 @@ public class HubServiceV1 implements HubService {
     }
 
     public HubEntity getHubEntityByHubId(UUID hubId) {
-        return hubRepository.findById(hubId).orElseThrow(() -> {
+        return hubRepository.findByIdActive(hubId).orElseThrow(() -> {
             log.warn("허브를 찾을 수 없음 - hubId: {}", hubId);
             return new HubNotFoundException();
         });
