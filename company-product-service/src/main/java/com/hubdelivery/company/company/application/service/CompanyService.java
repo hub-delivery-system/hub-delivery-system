@@ -6,6 +6,7 @@ import com.hubdelivery.company.company.domain.entity.Company;
 import com.hubdelivery.company.company.domain.exception.CompanyNotFoundException;
 import com.hubdelivery.company.company.domain.repository.CompanyRepository;
 import com.hubdelivery.company.company.presentation.dto.request.CompanyCreateRequestDto;
+import com.hubdelivery.company.company.presentation.dto.request.CompanyUpdateRequestDto;
 import com.hubdelivery.company.company.presentation.dto.response.CompanyCreateResponseDto;
 import com.hubdelivery.company.company.presentation.dto.response.CompanyGetResponseDto;
 import lombok.RequiredArgsConstructor;
@@ -48,6 +49,17 @@ public class CompanyService {
     public CompanyGetResponseDto getCompany(UUID companyId) {
         return CompanyGetResponseDto.from(companyRepository.findByIdAndDeletedAtIsNull(companyId)
                 .orElseThrow(CompanyNotFoundException::new));
+    }
+
+    @Transactional
+    public CompanyGetResponseDto updateCompany(UUID companyId, CompanyUpdateRequestDto request) {
+        // TODO: hub-service 연동 확정 후 hubId 존재 여부와 HUB_MANAGER 담당 허브 여부를 검증한다.
+        Company company = companyRepository.findByIdAndDeletedAtIsNull(companyId)
+                .orElseThrow(CompanyNotFoundException::new);
+
+        company.update(request.companyName(), request.companyType(), request.hubId(), request.address());
+
+        return CompanyGetResponseDto.from(company);
     }
 
     private Pageable createPageable(Integer page, Integer size, String sort) {

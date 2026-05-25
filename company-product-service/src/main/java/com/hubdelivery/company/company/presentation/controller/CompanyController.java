@@ -4,6 +4,7 @@ import com.hubdelivery.common.response.ApiResponse;
 import com.hubdelivery.common.response.PageResponse;
 import com.hubdelivery.company.company.application.service.CompanyService;
 import com.hubdelivery.company.company.presentation.dto.request.CompanyCreateRequestDto;
+import com.hubdelivery.company.company.presentation.dto.request.CompanyUpdateRequestDto;
 import com.hubdelivery.company.company.presentation.dto.response.CompanyCreateResponseDto;
 import com.hubdelivery.company.company.presentation.dto.response.CompanyGetResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
@@ -69,5 +70,20 @@ public class CompanyController {
             @PathVariable UUID companyId
     ) {
         return ApiResponse.ok(companyService.getCompany(companyId));
+    }
+
+    @PutMapping("/{companyId}")
+    @Operation(summary = "업체 수정", description = "업체 정보를 수정합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "수정 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 본문 검증 실패"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "업체를 찾을 수 없음")
+    })
+    public ApiResponse<CompanyGetResponseDto> updateCompany(
+            @Parameter(description = "업체 ID")
+            @PathVariable UUID companyId,
+            @Valid @RequestBody CompanyUpdateRequestDto request
+    ) {
+        return ApiResponse.ok(companyService.updateCompany(companyId, request));
     }
 }
