@@ -1,4 +1,4 @@
-package com.hubdelivery.company.config;
+package com.hubdelivery.company.global.config;
 
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import jakarta.persistence.EntityManager;
