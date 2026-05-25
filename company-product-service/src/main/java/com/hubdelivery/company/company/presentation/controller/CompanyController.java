@@ -1,10 +1,13 @@
 package com.hubdelivery.company.company.presentation.controller;
 
 import com.hubdelivery.common.response.ApiResponse;
+import com.hubdelivery.common.response.PageResponse;
 import com.hubdelivery.company.company.application.service.CompanyService;
 import com.hubdelivery.company.company.presentation.dto.request.CompanyCreateRequestDto;
 import com.hubdelivery.company.company.presentation.dto.response.CompanyCreateResponseDto;
+import com.hubdelivery.company.company.presentation.dto.response.CompanyGetResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -33,5 +36,23 @@ public class CompanyController {
     @ResponseStatus(HttpStatus.CREATED)
     public ApiResponse<CompanyCreateResponseDto> createCompany(@Valid @RequestBody CompanyCreateRequestDto request) {
         return ApiResponse.created(companyService.createCompany(request));
+    }
+
+    @GetMapping
+    @Operation(summary = "업체 조회 및 검색", description = "업체 목록을 검색 조건과 페이지 조건으로 조회합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
+    })
+    public ApiResponse<PageResponse<CompanyGetResponseDto>> getAllCompanies(
+            @Parameter(description = "업체명/주소 검색어")
+            @RequestParam(required = false) String keyword,
+            @Parameter(description = "페이지 번호")
+            @RequestParam(required = false) Integer page,
+            @Parameter(description = "페이지 크기")
+            @RequestParam(required = false) Integer size,
+            @Parameter(description = "정렬 조건")
+            @RequestParam(required = false) String sort
+    ) {
+        return ApiResponse.ok(companyService.getAllCompanies(keyword, page, size, sort));
     }
 }
