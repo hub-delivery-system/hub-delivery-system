@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Schema(description = "업체 응답 DTO")
-public record CompanyGetResponseDto(
+public record CompanyResponseDto(
 
         @Schema(name = "id", description = "업체 ID", example = "d4e5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f9a")
         UUID id,
@@ -38,8 +38,8 @@ public record CompanyGetResponseDto(
         String updatedBy
 ) {
 
-    public static CompanyGetResponseDto from(Company company) {
-        return new CompanyGetResponseDto(
+    public static CompanyResponseDto from(Company company) {
+        return new CompanyResponseDto(
                 company.getId(),
                 company.getCompanyName(),
                 company.getCompanyType(),

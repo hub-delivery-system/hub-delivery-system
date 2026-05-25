@@ -7,8 +7,7 @@ import com.hubdelivery.company.company.domain.exception.CompanyNotFoundException
 import com.hubdelivery.company.company.domain.repository.CompanyRepository;
 import com.hubdelivery.company.company.presentation.dto.request.CompanyCreateRequestDto;
 import com.hubdelivery.company.company.presentation.dto.request.CompanyUpdateRequestDto;
-import com.hubdelivery.company.company.presentation.dto.response.CompanyCreateResponseDto;
-import com.hubdelivery.company.company.presentation.dto.response.CompanyGetResponseDto;
+import com.hubdelivery.company.company.presentation.dto.response.CompanyResponseDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -31,35 +30,35 @@ public class CompanyService {
     private final CompanyRepository companyRepository;
 
     @Transactional
-    public CompanyCreateResponseDto createCompany(CompanyCreateRequestDto request) {
+    public CompanyResponseDto createCompany(CompanyCreateRequestDto request) {
         // TODO: hub-service 연동 확정 후 hubId 존재 여부와 HUB_MANAGER 담당 허브 여부를 검증한다.
         // TODO: 여러 검증 로직 추가
         Company company = companyRepository.save(request.toEntity());
-        return CompanyCreateResponseDto.from(company);
+        return CompanyResponseDto.from(company);
     }
 
-    public PageResponse<CompanyGetResponseDto> getAllCompanies(String keyword, Integer page, Integer size, String sort) {
+    public PageResponse<CompanyResponseDto> getAllCompanies(String keyword, Integer page, Integer size, String sort) {
         String normalizedKeyword = normalizeKeyword(keyword);
         Pageable pageable = createPageable(page, size, sort);
 
         return PageResponse.from(companyRepository.searchCompanies(normalizedKeyword, pageable)
-                .map(CompanyGetResponseDto::from));
+                .map(CompanyResponseDto::from));
     }
 
-    public CompanyGetResponseDto getCompany(UUID companyId) {
-        return CompanyGetResponseDto.from(companyRepository.findByIdAndDeletedAtIsNull(companyId)
+    public CompanyResponseDto getCompany(UUID companyId) {
+        return CompanyResponseDto.from(companyRepository.findByIdAndDeletedAtIsNull(companyId)
                 .orElseThrow(CompanyNotFoundException::new));
     }
 
     @Transactional
-    public CompanyGetResponseDto updateCompany(UUID companyId, CompanyUpdateRequestDto request) {
+    public CompanyResponseDto updateCompany(UUID companyId, CompanyUpdateRequestDto request) {
         // TODO: hub-service 연동 확정 후 hubId 존재 여부와 HUB_MANAGER 담당 허브 여부를 검증한다.
         Company company = companyRepository.findByIdAndDeletedAtIsNull(companyId)
                 .orElseThrow(CompanyNotFoundException::new);
 
         company.update(request.companyName(), request.companyType(), request.hubId(), request.address());
 
-        return CompanyGetResponseDto.from(company);
+        return CompanyResponseDto.from(company);
     }
 
     private Pageable createPageable(Integer page, Integer size, String sort) {

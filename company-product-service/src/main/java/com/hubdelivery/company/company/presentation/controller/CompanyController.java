@@ -5,8 +5,7 @@ import com.hubdelivery.common.response.PageResponse;
 import com.hubdelivery.company.company.application.service.CompanyService;
 import com.hubdelivery.company.company.presentation.dto.request.CompanyCreateRequestDto;
 import com.hubdelivery.company.company.presentation.dto.request.CompanyUpdateRequestDto;
-import com.hubdelivery.company.company.presentation.dto.response.CompanyCreateResponseDto;
-import com.hubdelivery.company.company.presentation.dto.response.CompanyGetResponseDto;
+import com.hubdelivery.company.company.presentation.dto.response.CompanyResponseDto;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -37,7 +36,7 @@ public class CompanyController {
     })
     @PreAuthorize("hasAnyRole('MASTER', 'HUB_MANAGER')")
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<CompanyCreateResponseDto> createCompany(@Valid @RequestBody CompanyCreateRequestDto request) {
+    public ApiResponse<CompanyResponseDto> createCompany(@Valid @RequestBody CompanyCreateRequestDto request) {
         return ApiResponse.created(companyService.createCompany(request));
     }
 
@@ -46,7 +45,7 @@ public class CompanyController {
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
     })
-    public ApiResponse<PageResponse<CompanyGetResponseDto>> getAllCompanies(
+    public ApiResponse<PageResponse<CompanyResponseDto>> getAllCompanies(
             @Parameter(description = "업체명/주소 검색어")
             @RequestParam(required = false) String keyword,
             @Parameter(description = "페이지 번호")
@@ -65,7 +64,7 @@ public class CompanyController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "업체를 찾을 수 없음")
     })
-    public ApiResponse<CompanyGetResponseDto> getCompany(
+    public ApiResponse<CompanyResponseDto> getCompany(
             @Parameter(description = "업체 ID")
             @PathVariable UUID companyId
     ) {
@@ -79,7 +78,7 @@ public class CompanyController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 본문 검증 실패"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "업체를 찾을 수 없음")
     })
-    public ApiResponse<CompanyGetResponseDto> updateCompany(
+    public ApiResponse<CompanyResponseDto> updateCompany(
             @Parameter(description = "업체 ID")
             @PathVariable UUID companyId,
             @Valid @RequestBody CompanyUpdateRequestDto request
