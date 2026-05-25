@@ -29,6 +29,7 @@ public class CompanyService {
 
     private final CompanyRepository companyRepository;
 
+    /** 업체 생성 로직 */
     @Transactional
     public CompanyResponseDto createCompany(CompanyCreateRequestDto request) {
         // TODO: hub-service 연동 확정 후 hubId 존재 여부와 HUB_MANAGER 담당 허브 여부를 검증한다.
@@ -37,6 +38,7 @@ public class CompanyService {
         return CompanyResponseDto.from(company);
     }
 
+    /** 업체 전체 조회 로직 */
     public PageResponse<CompanyResponseDto> getAllCompanies(String keyword, Integer page, Integer size, String sort) {
         String normalizedKeyword = normalizeKeyword(keyword);
         Pageable pageable = createPageable(page, size, sort);
@@ -45,11 +47,13 @@ public class CompanyService {
                 .map(CompanyResponseDto::from));
     }
 
+    /** 업체 상세 조회 로직 */
     public CompanyResponseDto getCompany(UUID companyId) {
         return CompanyResponseDto.from(companyRepository.findByIdAndDeletedAtIsNull(companyId)
                 .orElseThrow(CompanyNotFoundException::new));
     }
 
+    /** 업체 수정 로직 */
     @Transactional
     public CompanyResponseDto updateCompany(UUID companyId, CompanyUpdateRequestDto request) {
         // TODO: hub-service 연동 확정 후 hubId 존재 여부와 HUB_MANAGER 담당 허브 여부를 검증한다.
@@ -61,6 +65,7 @@ public class CompanyService {
         return CompanyResponseDto.from(company);
     }
 
+    /** 업체 삭제 로직 */
     @Transactional
     public void deleteCompany(UUID companyId, String deletedBy) {
         Company company = companyRepository.findByIdAndDeletedAtIsNull(companyId)
