@@ -39,5 +39,8 @@ public interface DeliveryManagerRepository extends JpaRepository<DeliveryManager
 
     Page<DeliveryManager> findAllByDeletedAtIsNull(Pageable pageable);
 
+    // HUB_MANAGER 목록 조회: 담당 허브 소속 담당자만 반환
+    Page<DeliveryManager> findAllByHubIdAndDeletedAtIsNull(UUID hubId, Pageable pageable);
+
     Optional<DeliveryManager> findByIdAndDeletedAtIsNull(UUID id);
 }

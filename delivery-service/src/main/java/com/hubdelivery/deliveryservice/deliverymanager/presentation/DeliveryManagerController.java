@@ -2,7 +2,7 @@ package com.hubdelivery.deliveryservice.deliverymanager.presentation;
 
 import com.hubdelivery.common.response.ApiResponse;
 import com.hubdelivery.common.response.PageResponse;
-import com.hubdelivery.common.util.PageableUtils;
+import com.hubdelivery.common.security.UserRole;
 import com.hubdelivery.deliveryservice.deliverymanager.application.DeliveryManagerService;
 import com.hubdelivery.deliveryservice.deliverymanager.domain.type.DeliveryManagerType;
 import com.hubdelivery.deliveryservice.deliverymanager.presentation.dto.DeliveryManagerCreateRequest;
@@ -33,35 +33,48 @@ public class DeliveryManagerController {
 
     @PostMapping
     public ResponseEntity<ApiResponse<DeliveryManagerResponse>> create(
-            @Valid @RequestBody DeliveryManagerCreateRequest request) {
+            @Valid @RequestBody DeliveryManagerCreateRequest request,
+            @RequestHeader("X-User-Id") String userId,
+            @RequestHeader("X-Role") String role) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.created(deliveryManagerService.create(request)));
+                .body(ApiResponse.created(deliveryManagerService.create(request, userId, UserRole.valueOf(role))));
     }
 
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<DeliveryManagerResponse>>> getAll(
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
-        return ResponseEntity.ok(ApiResponse.ok(deliveryManagerService.getAll(page, size)));
+            @RequestParam(defaultValue = "10") int size,
+            @RequestHeader("X-User-Id") String userId,
+            @RequestHeader("X-Role") String role) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                deliveryManagerService.getAll(page, size, userId, UserRole.valueOf(role))));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<DeliveryManagerResponse>> getById(@PathVariable UUID id) {
-        return ResponseEntity.ok(ApiResponse.ok(deliveryManagerService.getById(id)));
+    public ResponseEntity<ApiResponse<DeliveryManagerResponse>> getById(
+            @PathVariable UUID id,
+            @RequestHeader("X-User-Id") String userId,
+            @RequestHeader("X-Role") String role) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                deliveryManagerService.getById(id, userId, UserRole.valueOf(role))));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<DeliveryManagerResponse>> update(
             @PathVariable UUID id,
-            @Valid @RequestBody DeliveryManagerUpdateRequest request) {
-        return ResponseEntity.ok(ApiResponse.ok(deliveryManagerService.update(id, request)));
+            @Valid @RequestBody DeliveryManagerUpdateRequest request,
+            @RequestHeader("X-User-Id") String userId,
+            @RequestHeader("X-Role") String role) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                deliveryManagerService.update(id, request, userId, UserRole.valueOf(role))));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> delete(
             @PathVariable UUID id,
-            @RequestHeader("X-User-Id") String userId) {
-        deliveryManagerService.delete(id, userId);
+            @RequestHeader("X-User-Id") String userId,
+            @RequestHeader("X-Role") String role) {
+        deliveryManagerService.delete(id, userId, UserRole.valueOf(role));
         return ResponseEntity.ok(ApiResponse.ok(null));
     }
 
@@ -71,6 +84,7 @@ public class DeliveryManagerController {
             @RequestParam UUID hubId,
             @RequestParam DeliveryManagerType type,
             @RequestParam(defaultValue = "0") int currentSequence) {
-        return ResponseEntity.ok(ApiResponse.ok(deliveryManagerService.assignNext(hubId, type, currentSequence)));
+        return ResponseEntity.ok(ApiResponse.ok(
+                deliveryManagerService.assignNext(hubId, type, currentSequence)));
     }
 }
