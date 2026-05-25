@@ -3,6 +3,7 @@ package com.hubdelivery.company.company.application.service;
 import com.hubdelivery.common.response.PageResponse;
 import com.hubdelivery.common.util.PageableUtils;
 import com.hubdelivery.company.company.domain.entity.Company;
+import com.hubdelivery.company.company.domain.exception.CompanyNotFoundException;
 import com.hubdelivery.company.company.domain.repository.CompanyRepository;
 import com.hubdelivery.company.company.presentation.dto.request.CompanyCreateRequestDto;
 import com.hubdelivery.company.company.presentation.dto.response.CompanyCreateResponseDto;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -41,6 +43,11 @@ public class CompanyService {
 
         return PageResponse.from(companyRepository.searchCompanies(normalizedKeyword, pageable)
                 .map(CompanyGetResponseDto::from));
+    }
+
+    public CompanyGetResponseDto getCompany(UUID companyId) {
+        return CompanyGetResponseDto.from(companyRepository.findByIdAndDeletedAtIsNull(companyId)
+                .orElseThrow(CompanyNotFoundException::new));
     }
 
     private Pageable createPageable(Integer page, Integer size, String sort) {

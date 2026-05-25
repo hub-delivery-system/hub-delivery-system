@@ -16,6 +16,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.UUID;
+
 @Tag(name = "Company", description = "업체 API")
 @RestController
 @RequestMapping("/api/v1/companies")
@@ -54,5 +56,18 @@ public class CompanyController {
             @RequestParam(required = false) String sort
     ) {
         return ApiResponse.ok(companyService.getAllCompanies(keyword, page, size, sort));
+    }
+
+    @GetMapping("/{companyId}")
+    @Operation(summary = "업체 상세 조회", description = "업체 ID로 업체 상세 정보를 조회합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "조회 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "업체를 찾을 수 없음")
+    })
+    public ApiResponse<CompanyGetResponseDto> getCompany(
+            @Parameter(description = "업체 ID")
+            @PathVariable UUID companyId
+    ) {
+        return ApiResponse.ok(companyService.getCompany(companyId));
     }
 }
