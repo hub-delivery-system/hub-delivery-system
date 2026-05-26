@@ -62,7 +62,7 @@ public class DeliveryManagerService {
 
         // HUB_MANAGER는 담당 허브 소속 담당자만 조회
         if (role == UserRole.HUB_MANAGER) {
-            UUID hubId = userServiceClient.getUser(UUID.fromString(userId)).getData().getHubId();
+            UUID hubId = userServiceClient.getUser(UUID.fromString(userId)).data().getHubId();
             return PageResponse.from(
                     deliveryManagerRepository.findAllByHubIdAndDeletedAtIsNull(hubId, pageable)
                             .map(DeliveryManagerResponse::from)
@@ -122,7 +122,7 @@ public class DeliveryManagerService {
     private void checkWritePermission(UserRole role, String userId, UUID resourceHubId) {
         if (role == UserRole.MASTER) return;
         if (role == UserRole.HUB_MANAGER) {
-            UUID managerHubId = userServiceClient.getUser(UUID.fromString(userId)).getData().getHubId();
+            UUID managerHubId = userServiceClient.getUser(UUID.fromString(userId)).data().getHubId();
             if (resourceHubId != null && !managerHubId.equals(resourceHubId)) {
                 throw new DeliveryManagerException(DeliveryManagerErrorCode.MANAGER_FORBIDDEN);
             }
@@ -135,7 +135,7 @@ public class DeliveryManagerService {
     private void checkReadPermission(UserRole role, String userId, DeliveryManager manager) {
         if (role == UserRole.MASTER) return;
         if (role == UserRole.HUB_MANAGER) {
-            UUID managerHubId = userServiceClient.getUser(UUID.fromString(userId)).getData().getHubId();
+            UUID managerHubId = userServiceClient.getUser(UUID.fromString(userId)).data().getHubId();
             if (!managerHubId.equals(manager.getHubId())) {
                 throw new DeliveryManagerException(DeliveryManagerErrorCode.MANAGER_FORBIDDEN);
             }
