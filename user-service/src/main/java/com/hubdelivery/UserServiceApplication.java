@@ -2,11 +2,13 @@ package com.hubdelivery;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.context.annotation.Import;
 
 import com.hubdelivery.common.config.JpaAuditingConfig;
 
 @SpringBootApplication
+@ConfigurationPropertiesScan
 @Import(JpaAuditingConfig.class)
 public class UserServiceApplication {
 
