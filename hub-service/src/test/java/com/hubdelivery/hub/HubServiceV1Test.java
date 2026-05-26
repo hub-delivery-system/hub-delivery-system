@@ -89,7 +89,7 @@ class HubServiceV1Test {
         @DisplayName("정상적으로 허브를 생성한다")
         void createHub_Success() {
             // given
-            given(hubRepository.existsByLatitudeAndLongitude(
+            given(hubRepository.existsByLatitudeAndLongitudeIsActive(
                     reqHubDto.getLatitude(),
                     reqHubDto.getLongitude()
             )).willReturn(false);
@@ -109,7 +109,7 @@ class HubServiceV1Test {
         @DisplayName("중복된 위치로 허브 생성 시 예외가 발생한다")
         void createHub_DuplicateLocation_ThrowsException() {
             // given
-            given(hubRepository.existsByLatitudeAndLongitude(
+            given(hubRepository.existsByLatitudeAndLongitudeIsActive(
                     reqHubDto.getLatitude(),
                     reqHubDto.getLongitude()
             )).willReturn(true);
@@ -131,7 +131,7 @@ class HubServiceV1Test {
         @DisplayName("ID로 허브를 조회한다")
         void getHub_Success() {
             // given
-            given(hubRepository.findById(hubId)).willReturn(Optional.of(hubEntity));
+            given(hubRepository.findByIdActive(hubId)).willReturn(Optional.of(hubEntity));
 
             // when
             ResGetHubDto result = hubService.getHub(hubId);
@@ -139,14 +139,14 @@ class HubServiceV1Test {
             // then
             assertThat(result).isNotNull();
             assertThat(result.getHubName()).isEqualTo("서울허브");
-            verify(hubRepository, times(1)).findById(hubId);
+            verify(hubRepository, times(1)).findByIdActive(hubId);
         }
 
         @Test
         @DisplayName("존재하지 않는 허브 조회 시 예외가 발생한다")
         void getHub_NotFound_ThrowsException() {
             // given
-            given(hubRepository.findById(hubId)).willReturn(Optional.empty());
+            given(hubRepository.findByIdActive(hubId)).willReturn(Optional.empty());
 
             // when & then
             assertThatThrownBy(() -> hubService.getHub(hubId))
@@ -161,7 +161,6 @@ class HubServiceV1Test {
             Pageable pageable = PageRequest.of(0, 10);
             Page<HubEntity> hubPage = new PageImpl<>(List.of(hubEntity));
             given(hubRepository.searchHubs(null,pageable)).willReturn(hubPage);
-            String keyword="hub01";
 
             // when
             Page<ResGetHubDto> result = hubService.getHubs(null, pageable);
@@ -209,7 +208,7 @@ class HubServiceV1Test {
                     .build();
 
 
-            given(hubRepository.findById(hubId)).willReturn(Optional.of(hubEntity));
+            given(hubRepository.findByIdActive(hubId)).willReturn(Optional.of(hubEntity));
             given(hubRepository.existsByLatitudeAndLongitudeExcludingId(
                     updateDto.getLatitude(),
                     updateDto.getLongitude(),
@@ -229,7 +228,7 @@ class HubServiceV1Test {
         @DisplayName("존재하지 않는 허브 수정 시 예외가 발생한다")
         void updateHub_NotFound_ThrowsException() {
             // given
-            given(hubRepository.findById(hubId)).willReturn(Optional.empty());
+            given(hubRepository.findByIdActive(hubId)).willReturn(Optional.empty());
 
             // when & then
             assertThatThrownBy(() -> hubService.updateHub(hubId, reqHubDto, userId, role))
@@ -240,7 +239,7 @@ class HubServiceV1Test {
         @DisplayName("다른 허브와 위치가 중복되면 예외가 발생한다")
         void updateHub_DuplicateLocation_ThrowsException() {
             // given
-            given(hubRepository.findById(hubId)).willReturn(Optional.of(hubEntity));
+            given(hubRepository.findByIdActive(hubId)).willReturn(Optional.of(hubEntity));
             given(hubRepository.existsByLatitudeAndLongitudeExcludingId(
                     reqHubDto.getLatitude(),
                     reqHubDto.getLongitude(),
@@ -261,7 +260,7 @@ class HubServiceV1Test {
         @DisplayName("정상적으로 허브를 삭제한다 (Soft Delete)")
         void deleteHub_Success() {
             // given
-            given(hubRepository.findById(hubId)).willReturn(Optional.of(hubEntity));
+            given(hubRepository.findByIdActive(hubId)).willReturn(Optional.of(hubEntity));
 
             // when
             hubService.deleteHub(hubId, userId, role);
@@ -269,14 +268,14 @@ class HubServiceV1Test {
             // then
             assertThat(hubEntity.isDeleted()).isTrue();
             assertThat(hubEntity.getDeletedBy()).isEqualTo(userId.toString());
-            verify(hubRepository, times(1)).findById(hubId);
+            verify(hubRepository, times(1)).findByIdActive(hubId);
         }
 
         @Test
         @DisplayName("존재하지 않는 허브 삭제 시 예외가 발생한다")
         void deleteHub_NotFound_ThrowsException() {
             // given
-            given(hubRepository.findById(hubId)).willReturn(Optional.empty());
+            given(hubRepository.findByIdActive(hubId)).willReturn(Optional.empty());
 
             // when & then
             assertThatThrownBy(() -> hubService.deleteHub(hubId, userId, role))
@@ -294,7 +293,7 @@ class HubServiceV1Test {
             // given
             BigDecimal latitude = new BigDecimal("37.4979000");
             BigDecimal longitude = new BigDecimal("127.0276000");
-            given(hubRepository.existsByLatitudeAndLongitude(latitude, longitude))
+            given(hubRepository.existsByLatitudeAndLongitudeIsActive(latitude, longitude))
                     .willReturn(false);
 
             // when & then (예외가 발생하지 않음)
@@ -307,7 +306,7 @@ class HubServiceV1Test {
             // given
             BigDecimal latitude = new BigDecimal("37.4979000");
             BigDecimal longitude = new BigDecimal("127.0276000");
-            given(hubRepository.existsByLatitudeAndLongitude(latitude, longitude))
+            given(hubRepository.existsByLatitudeAndLongitudeIsActive(latitude, longitude))
                     .willReturn(true);
 
             // when & then

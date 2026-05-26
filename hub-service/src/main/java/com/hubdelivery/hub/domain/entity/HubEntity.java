@@ -9,13 +9,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 @Entity
-@Table(
-        name = "p_hub",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uk_latitude_longitude",
-                columnNames = {"latitude", "longitude"}
-        )
-)
+@Table(name = "p_hub")
 @NoArgsConstructor(access= AccessLevel.PROTECTED)
 @Getter
 @AllArgsConstructor

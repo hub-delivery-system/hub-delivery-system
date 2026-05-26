@@ -156,7 +156,7 @@ public class HubServiceV1 implements HubService {
     }
 
     public void validateDuplicateLocation(BigDecimal latitude, BigDecimal longitude) {
-        if (hubRepository.existsByLatitudeAndLongitude(latitude, longitude)) {
+        if (hubRepository.existsByLatitudeAndLongitudeIsActive(latitude, longitude)) {
             log.warn("중복된 위치로 허브 생성 시도 - lat: {}, lng: {}", latitude, longitude);
             throw new HubDuplicateLocationException();
         }

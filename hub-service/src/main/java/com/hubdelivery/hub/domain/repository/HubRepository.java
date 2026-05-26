@@ -31,8 +31,10 @@ public interface HubRepository extends JpaRepository<HubEntity, UUID> {
             Pageable pageable
     );
 
-
-    boolean existsByLatitudeAndLongitude(BigDecimal latitude,BigDecimal longitude);
+    @Query("SELECT COUNT(h) > 0 FROM HubEntity h " +
+            "WHERE h.latitude = :latitude AND h.longitude = :longitude "+
+            "AND h.deletedAt IS NULL")
+    boolean existsByLatitudeAndLongitudeIsActive(BigDecimal latitude, BigDecimal longitude);
 
     @Query("SELECT COUNT(h) > 0 FROM HubEntity h " +
             "WHERE h.latitude = :latitude AND h.longitude = :longitude " +
