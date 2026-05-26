@@ -14,7 +14,9 @@ public enum AuthErrorCode implements ErrorCode {
     SLACK_ID_ALREADY_EXISTS(HttpStatus.BAD_REQUEST, "AUTH-001", "이미 사용 중인 slack_id 입니다."),
     LOGIN_FAILED(HttpStatus.UNAUTHORIZED, "AUTH-003", "슬랙 아이디 또는 비밀번호가 올바르지 않습니다."),
     PENDING_APPROVAL(HttpStatus.FORBIDDEN, "AUTH-004", "가입 승인 대기 중입니다."),
-    REJECTED_USER(HttpStatus.FORBIDDEN, "AUTH-005", "가입이 거절된 계정입니다.");
+    REJECTED_USER(HttpStatus.FORBIDDEN, "AUTH-005", "가입이 거절된 계정입니다."),
+    KEYCLOAK_AUTH_FAILED(HttpStatus.UNAUTHORIZED, "AUTH-006", "인증 서버 로그인에 실패했습니다."),
+    KEYCLOAK_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "AUTH-007", "인증 서버와 통신할 수 없습니다.");
 
     private final HttpStatus status;
     private final String code;
