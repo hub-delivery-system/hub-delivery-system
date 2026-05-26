@@ -10,7 +10,6 @@ import com.hubdelivery.auth.domain.exception.LoginFailedException;
 import com.hubdelivery.auth.domain.exception.PendingApprovalException;
 import com.hubdelivery.auth.domain.exception.RejectedUserException;
 import com.hubdelivery.auth.domain.exception.SlackIdAlreadyExistsException;
-import com.hubdelivery.auth.domain.exception.UsernameAlreadyExistsException;
 import com.hubdelivery.auth.presentation.dto.request.LoginRequest;
 import com.hubdelivery.auth.presentation.dto.request.SignupRequest;
 import com.hubdelivery.auth.presentation.dto.response.LoginResponse;
@@ -31,11 +30,6 @@ public class AuthService {
 
         if (userRepository.existsBySlackIdAndDeletedAtIsNull(request.slackId())) {
             throw new SlackIdAlreadyExistsException();
-        }
-
-        // username도 유니크로 사용
-        if (userRepository.existsByUsernameAndDeletedAtIsNull(request.username())) {
-            throw new UsernameAlreadyExistsException();
         }
 
         // TODO: Keycloack 연동 후 password 저장/검증 방식 변경 필요
