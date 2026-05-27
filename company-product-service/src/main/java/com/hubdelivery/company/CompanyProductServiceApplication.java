@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Import;
 
 @SpringBootApplication
 @EnableDiscoveryClient
-@EnableFeignClients(basePackages = "com.hubdelivery.company.company.infrastructure.client")
+@EnableFeignClients(basePackages = "com.hubdelivery.company.global.infrastructure.client")
 @Import({ JpaAuditingConfig.class, GlobalExceptionHandler.class })
 public class CompanyProductServiceApplication {
 

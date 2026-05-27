@@ -1,4 +1,4 @@
-package com.hubdelivery.company.company.infrastructure.client.config;
+package com.hubdelivery.company.global.infrastructure.client.config;
 
 import org.springframework.context.annotation.Bean;
 

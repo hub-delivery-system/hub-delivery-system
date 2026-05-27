@@ -7,7 +7,7 @@ import com.hubdelivery.company.company.domain.exception.CompanyHubIntegrationExc
 import com.hubdelivery.company.company.domain.exception.CompanyHubNotFoundException;
 import com.hubdelivery.company.company.domain.exception.CompanyNotFoundException;
 import com.hubdelivery.company.company.domain.repository.CompanyRepository;
-import com.hubdelivery.company.company.infrastructure.client.HubClient;
+import com.hubdelivery.company.global.infrastructure.client.HubClient;
 import com.hubdelivery.company.company.presentation.dto.request.CompanyCreateRequestDto;
 import com.hubdelivery.company.company.presentation.dto.request.CompanyUpdateRequestDto;
 import com.hubdelivery.company.company.presentation.dto.response.CompanyResponseDto;

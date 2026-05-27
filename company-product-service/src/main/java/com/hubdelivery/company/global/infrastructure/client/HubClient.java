@@ -1,4 +1,4 @@
-package com.hubdelivery.company.company.infrastructure.client;
+package com.hubdelivery.company.global.infrastructure.client;
 
 import java.util.UUID;
 
@@ -9,8 +9,8 @@ import org.springframework.web.bind.annotation.RequestHeader;
 
 import com.hubdelivery.common.response.ApiResponse;
 import com.hubdelivery.common.security.UserRole;
-import com.hubdelivery.company.company.infrastructure.client.config.HubClientConfig;
-import com.hubdelivery.company.company.infrastructure.client.dto.HubResponse;
+import com.hubdelivery.company.global.infrastructure.client.config.HubClientConfig;
+import com.hubdelivery.company.global.infrastructure.client.dto.HubResponse;
 
 @FeignClient(name = "hub-service", path = "/api/v1/hubs", configuration = HubClientConfig.class)
 public interface HubClient {
