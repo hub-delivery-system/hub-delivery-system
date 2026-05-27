@@ -22,15 +22,11 @@ public final class SearchPageableUtils {
         int pageSize = size == null ? PageableUtils.DEFAULT_SIZE : size;
         Pageable pageable = PageableUtils.createPageable(pageNumber, pageSize);
 
-        if (!PageableUtils.hasKeyword(sort)) {
-            return pageable;
-        }
+        Sort resolvedSort = PageableUtils.hasKeyword(sort)
+                ? resolveSort(sort, sortPolicy)
+                : defaultSort(sortPolicy);
 
-        return PageRequest.of(
-                pageable.getPageNumber(),
-                pageable.getPageSize(),
-                resolveSort(sort, sortPolicy)
-        );
+        return PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), resolvedSort);
     }
 
     public static String normalizeKeyword(String keyword) {
@@ -53,5 +49,9 @@ public final class SearchPageableUtils {
                 : Sort.Direction.fromOptionalString(parts[1].trim()).orElse(DEFAULT_SORT_DIRECTION);
 
         return Sort.by(direction, property);
+    }
+
+    private static Sort defaultSort(SearchSortPolicy sortPolicy) {
+        return Sort.by(DEFAULT_SORT_DIRECTION, sortPolicy.getDefaultSortProperty());
     }
 }
