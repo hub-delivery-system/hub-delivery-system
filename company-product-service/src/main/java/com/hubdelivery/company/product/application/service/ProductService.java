@@ -3,14 +3,18 @@ package com.hubdelivery.company.product.application.service;
 import com.hubdelivery.common.response.PageResponse;
 import com.hubdelivery.common.security.UserRole;
 import com.hubdelivery.company.company.domain.repository.CompanyRepository;
+import com.hubdelivery.company.global.infrastructure.client.HubClient;
 import com.hubdelivery.company.global.util.SearchPageableUtils;
 import com.hubdelivery.company.product.domain.entity.Product;
 import com.hubdelivery.company.product.domain.exception.ProductCompanyNotFoundException;
+import com.hubdelivery.company.product.domain.exception.ProductHubIntegrationException;
+import com.hubdelivery.company.product.domain.exception.ProductHubNotFoundException;
 import com.hubdelivery.company.product.domain.exception.ProductNotFoundException;
 import com.hubdelivery.company.product.domain.repository.ProductRepository;
 import com.hubdelivery.company.product.presentation.dto.request.ProductCreateRequestDto;
 import com.hubdelivery.company.product.presentation.dto.request.ProductUpdateRequestDto;
 import com.hubdelivery.company.product.presentation.dto.response.ProductResponseDto;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -27,12 +31,13 @@ public class ProductService {
 
     private final ProductRepository productRepository;
     private final CompanyRepository companyRepository;
+    private final HubClient hubClient;
 
     /** 상품 생성 로직 */
     @Transactional
     public ProductResponseDto createProduct(UUID userId, UserRole userRole, ProductCreateRequestDto request) {
         // TODO: userId/userRole 기반 scope 권한 검증
-        // TODO: HubClient 공통화 후 hubId 존재 여부 검증
+        validateHubExists(userId, userRole, request.hubId());
         validateCompanyExists(request.companyId());
 
         Product product = productRepository.save(request.toEntity());
@@ -58,11 +63,12 @@ public class ProductService {
     @Transactional
     public ProductResponseDto updateProduct(UUID userId, UserRole userRole, UUID productId, ProductUpdateRequestDto request) {
         // TODO: userId/userRole 기반 scope 권한 검증
-        // TODO: HubClient 공통화 후 hubId 존재 여부 검증
         Product product = productRepository.findByIdAndDeletedAtIsNull(productId)
                 .orElseThrow(ProductNotFoundException::new);
 
+        validateHubExists(userId, userRole, request.hubId());
         validateCompanyExists(request.companyId());
+
         product.update(request.productName(), request.hubId(), request.companyId());
 
         return ProductResponseDto.from(product);
@@ -82,6 +88,16 @@ public class ProductService {
     private void validateCompanyExists(UUID companyId) {
         if (companyRepository.findByIdAndDeletedAtIsNull(companyId).isEmpty()) {
             throw new ProductCompanyNotFoundException();
+        }
+    }
+
+    private void validateHubExists(UUID userId, UserRole userRole, UUID hubId) {
+        try {
+            hubClient.getHub(userId, userRole, hubId);
+        } catch (FeignException.NotFound e) {
+            throw new ProductHubNotFoundException();
+        } catch (FeignException e) {
+            throw new ProductHubIntegrationException();
         }
     }
 }
