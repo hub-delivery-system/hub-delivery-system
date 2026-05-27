@@ -31,4 +31,10 @@ public interface DeliveryRouteRepository extends JpaRepository<DeliveryRoute, UU
     // DELIVERY_MANAGER: 자신이 담당하는 경로
     Page<DeliveryRoute> findAllByDeliveryIdAndDeliveryManagerIdAndDeletedAtIsNull(
             UUID deliveryId, UUID deliveryManagerId, Pageable pageable);
+
+    // HUB_DELIVERY_MANAGER 크로스 요청 순환 배정용: 가장 최근 배정된 HUB_DM ID 조회
+    @Query("SELECT r.deliveryManagerId FROM DeliveryRoute r " +
+           "WHERE r.deliveryManagerId IS NOT NULL AND r.deletedAt IS NULL " +
+           "ORDER BY r.createdAt DESC")
+    Page<UUID> findLatestHubDeliveryManagerId(Pageable pageable);
 }

@@ -161,11 +161,17 @@ public class DeliveryService {
 
     /**
      * 각 경로에 HUB_DELIVERY_MANAGER 순환 배정.
-     * 한 번의 create 요청 내에서 여러 경로에 순차적으로 다른 담당자를 배정한다.
+     * 이전 요청에서 마지막으로 배정된 담당자의 sequence를 기준으로 이어서 순환 배정한다.
      */
     private List<DeliveryRoute> buildRoutes(UUID deliveryId, List<RouteRequest> routeRequests) {
         List<DeliveryRoute> routes = new ArrayList<>();
-        int lastHubSeq = 0;
+
+        // 크로스 요청 round-robin: 전체 DeliveryRoute에서 마지막 배정된 HUB_DM의 sequence를 기준으로 시작
+        int lastHubSeq = deliveryRouteRepository
+                .findLatestHubDeliveryManagerId(PageRequest.of(0, 1))
+                .getContent().stream().findFirst()
+                .map(deliveryManagerService::getSequenceById)
+                .orElse(0);
 
         for (RouteRequest r : routeRequests) {
             UUID routeManagerId;
