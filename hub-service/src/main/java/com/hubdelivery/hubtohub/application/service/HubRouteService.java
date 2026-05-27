@@ -1,6 +1,8 @@
 package com.hubdelivery.hubtohub.application.service;
 
 import com.hubdelivery.hub.domain.entity.HubEntity;
+import com.hubdelivery.hubtohub.domain.exception.KakaoApiException;
+import com.hubdelivery.hubtohub.domain.exception.KakaoRouteNotFoundException;
 import com.hubdelivery.hubtohub.infrastructure.client.kakao.KakaoMobilityClient;
 import com.hubdelivery.hubtohub.infrastructure.client.kakao.KakaoMobilityClient.Coordinate;
 import com.hubdelivery.hubtohub.infrastructure.client.kakao.response.DirectionsResponse;
@@ -8,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestClientResponseException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -33,7 +36,8 @@ public class HubRouteService {
      * 두 허브 간 경로 계산 (카카오 API + Hub and Spoke)
      */
     public RouteInfo calculateRoute(HubEntity fromHub, HubEntity toHub) {
-        log.info("경로 계산 시작 - from: {} → to: {}",
+        try {
+            log.info("경로 계산 시작 - from: {} → to: {}",
                 fromHub.getHubName(), toHub.getHubName());
 
         // 1. 각 허브의 가장 가까운 중앙허브 찾기
@@ -50,8 +54,17 @@ public class HubRouteService {
         DirectionsResponse response = kakaoClient.getDirections(
                 origin, destination, waypoints
         );
+
+
         DirectionsResponse.Route route = response.getRoutes().get(0);
+        if (route.getResultCode() != 0) {
+            log.warn("카카오 길찾기 실패 - resultCode: {}, msg: {}",
+                    route.getResultCode(), route.getResultMsg());
+            throw new KakaoRouteNotFoundException();  // ⭐ 경로 못 찾음
+        }
+
         List<DirectionsResponse.Section> sections = route.getSections();
+
 
         // 4. 결과 추출
         DirectionsResponse.Summary summary = route.getSummary();
@@ -71,6 +84,14 @@ public class HubRouteService {
         log.info("경로 계산 완료 - 거리: {}km, 시간: {}분", distanceKm, durationMinutes);
 
         return new RouteInfo(distanceKm, durationMinutes);
+        } catch (RestClientResponseException e) {
+            log.error("카카오 API 호출 실패", e);
+            throw new KakaoApiException();
+
+        } catch (Exception e) {
+            log.error("카카오 응답 파싱 실패", e);
+            throw new KakaoApiException();
+        }
     }
 
     /**
