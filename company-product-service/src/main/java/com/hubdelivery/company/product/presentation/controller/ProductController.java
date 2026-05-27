@@ -1,8 +1,8 @@
 package com.hubdelivery.company.product.presentation.controller;
 
-import com.hubdelivery.common.audit.AuditorAwareImpl;
 import com.hubdelivery.common.response.ApiResponse;
 import com.hubdelivery.common.response.PageResponse;
+import com.hubdelivery.common.security.UserRole;
 import com.hubdelivery.company.product.application.service.ProductService;
 import com.hubdelivery.company.product.presentation.dto.request.ProductCreateRequestDto;
 import com.hubdelivery.company.product.presentation.dto.request.ProductUpdateRequestDto;
@@ -10,6 +10,7 @@ import com.hubdelivery.company.product.presentation.dto.response.ProductResponse
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,13 +30,21 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class ProductController implements ProductControllerDocs {
 
+    private static final String X_USER_ID = "X-User-Id";
+    private static final String X_ROLE = "X-Role";
+
     private final ProductService productService;
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('MASTER', 'HUB_MANAGER', 'COMPANY_MANAGER')")
     @ResponseStatus(HttpStatus.CREATED)
     @Override
-    public ApiResponse<ProductResponseDto> createProduct(@Valid @RequestBody ProductCreateRequestDto request) {
-        return ApiResponse.created(productService.createProduct(request));
+    public ApiResponse<ProductResponseDto> createProduct(
+            @RequestHeader(X_USER_ID) UUID userId,
+            @RequestHeader(X_ROLE) UserRole userRole,
+            @Valid @RequestBody ProductCreateRequestDto request
+    ) {
+        return ApiResponse.created(productService.createProduct(userId, userRole, request));
     }
 
     @GetMapping
@@ -58,21 +67,26 @@ public class ProductController implements ProductControllerDocs {
     }
 
     @PutMapping("/{productId}")
+    @PreAuthorize("hasAnyRole('MASTER', 'HUB_MANAGER', 'COMPANY_MANAGER')")
     @Override
     public ApiResponse<ProductResponseDto> updateProduct(
+            @RequestHeader(X_USER_ID) UUID userId,
+            @RequestHeader(X_ROLE) UserRole userRole,
             @PathVariable UUID productId,
             @Valid @RequestBody ProductUpdateRequestDto request
     ) {
-        return ApiResponse.ok(productService.updateProduct(productId, request));
+        return ApiResponse.ok(productService.updateProduct(userId, userRole, productId, request));
     }
 
     @DeleteMapping("/{productId}")
+    @PreAuthorize("hasAnyRole('MASTER', 'HUB_MANAGER')")
     @Override
     public ApiResponse<Void> deleteProduct(
-            @PathVariable UUID productId,
-            @RequestHeader(value = AuditorAwareImpl.X_USER_ID, defaultValue = AuditorAwareImpl.SYSTEM_AUDITOR) String deletedBy
+            @RequestHeader(X_USER_ID) UUID userId,
+            @RequestHeader(X_ROLE) UserRole userRole,
+            @PathVariable UUID productId
     ) {
-        productService.deleteProduct(productId, deletedBy);
+        productService.deleteProduct(userId, userRole, productId);
         return ApiResponse.ok(null);
     }
 }

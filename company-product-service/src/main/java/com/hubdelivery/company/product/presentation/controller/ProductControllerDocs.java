@@ -4,6 +4,7 @@ import java.util.UUID;
 
 import com.hubdelivery.common.response.ApiResponse;
 import com.hubdelivery.common.response.PageResponse;
+import com.hubdelivery.common.security.UserRole;
 import com.hubdelivery.company.product.presentation.dto.request.ProductCreateRequestDto;
 import com.hubdelivery.company.product.presentation.dto.request.ProductUpdateRequestDto;
 import com.hubdelivery.company.product.presentation.dto.response.ProductResponseDto;
@@ -24,7 +25,11 @@ public interface ProductControllerDocs {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "권한 없음"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "상품 업체를 찾을 수 없음")
     })
-    ApiResponse<ProductResponseDto> createProduct(ProductCreateRequestDto request);
+    ApiResponse<ProductResponseDto> createProduct(
+            UUID userId,
+            UserRole userRole,
+            ProductCreateRequestDto request
+    );
 
     @Operation(summary = "상품 조회 및 검색", description = "상품 목록을 검색 조건과 페이지 조건으로 조회합니다.")
     @ApiResponses({
@@ -58,6 +63,8 @@ public interface ProductControllerDocs {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "상품 또는 상품 업체를 찾을 수 없음")
     })
     ApiResponse<ProductResponseDto> updateProduct(
+            UUID userId,
+            UserRole userRole,
             @Parameter(description = "상품 ID")
             UUID productId,
             ProductUpdateRequestDto request
@@ -69,8 +76,9 @@ public interface ProductControllerDocs {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "상품을 찾을 수 없음")
     })
     ApiResponse<Void> deleteProduct(
+            UUID userId,
+            UserRole userRole,
             @Parameter(description = "상품 ID")
-            UUID productId,
-            String deletedBy
+            UUID productId
     );
 }

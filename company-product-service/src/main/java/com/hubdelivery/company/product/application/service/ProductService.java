@@ -1,6 +1,7 @@
 package com.hubdelivery.company.product.application.service;
 
 import com.hubdelivery.common.response.PageResponse;
+import com.hubdelivery.common.security.UserRole;
 import com.hubdelivery.company.company.domain.repository.CompanyRepository;
 import com.hubdelivery.company.global.util.SearchPageableUtils;
 import com.hubdelivery.company.product.domain.entity.Product;
@@ -29,8 +30,9 @@ public class ProductService {
 
     /** 상품 생성 로직 */
     @Transactional
-    public ProductResponseDto createProduct(ProductCreateRequestDto request) {
-        // TODO: HubClient 확정 후 hubId 존재 여부와 HUB_MANAGER 담당 허브 여부를 검증한다.
+    public ProductResponseDto createProduct(UUID userId, UserRole userRole, ProductCreateRequestDto request) {
+        // TODO: userId/userRole 기반 scope 권한 검증
+        // TODO: HubClient 공통화 후 hubId 존재 여부 검증
         validateCompanyExists(request.companyId());
 
         Product product = productRepository.save(request.toEntity());
@@ -54,12 +56,13 @@ public class ProductService {
 
     /** 상품 수정 로직 */
     @Transactional
-    public ProductResponseDto updateProduct(UUID productId, ProductUpdateRequestDto request) {
-        // TODO: HubClient 확정 후 hubId 존재 여부와 HUB_MANAGER 담당 허브 여부를 검증한다.
-        validateCompanyExists(request.companyId());
-
+    public ProductResponseDto updateProduct(UUID userId, UserRole userRole, UUID productId, ProductUpdateRequestDto request) {
+        // TODO: userId/userRole 기반 scope 권한 검증
+        // TODO: HubClient 공통화 후 hubId 존재 여부 검증
         Product product = productRepository.findByIdAndDeletedAtIsNull(productId)
                 .orElseThrow(ProductNotFoundException::new);
+
+        validateCompanyExists(request.companyId());
         product.update(request.productName(), request.hubId(), request.companyId());
 
         return ProductResponseDto.from(product);
@@ -67,11 +70,13 @@ public class ProductService {
 
     /** 상품 삭제 로직 */
     @Transactional
-    public void deleteProduct(UUID productId, String deletedBy) {
+    public void deleteProduct(UUID userId, UserRole userRole, UUID productId) {
+        // TODO: userId/userRole 기반 scope 권한 검증
         Product product = productRepository.findByIdAndDeletedAtIsNull(productId)
                 .orElseThrow(ProductNotFoundException::new);
 
-        product.softDelete(deletedBy);
+        // TODO: user-service 연동 후 userId 대신 username 으로 기록
+        product.softDelete(userId.toString());
     }
 
     private void validateCompanyExists(UUID companyId) {
