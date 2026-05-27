@@ -50,9 +50,19 @@ public class HubRouteService {
         DirectionsResponse response = kakaoClient.getDirections(
                 origin, destination, waypoints
         );
+        DirectionsResponse.Route route = response.getRoutes().get(0);
+        List<DirectionsResponse.Section> sections = route.getSections();
 
         // 4. 결과 추출
-        DirectionsResponse.Summary summary = response.getRoutes().get(0).getSummary();
+        DirectionsResponse.Summary summary = route.getSummary();
+
+        for (int i = 0; i < sections.size(); i++) {
+            DirectionsResponse.Section section = sections.get(i);
+            double distanceKm = section.getDistance() / 1000.0;
+            int durationMin = section.getDuration() / 60;
+
+            log.info("구간 {}: {}km, {}분", i + 1, distanceKm, durationMin);
+        }
 
         BigDecimal distanceKm = BigDecimal.valueOf(summary.getDistance())
                 .divide(BigDecimal.valueOf(1000), 2, RoundingMode.HALF_UP);
