@@ -1,4 +1,4 @@
-package com.hubdelivery.hub.filter;
+package com.hubdelivery.global.filter;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
