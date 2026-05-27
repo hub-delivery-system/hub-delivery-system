@@ -7,12 +7,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
 
+import com.hubdelivery.auth.domain.type.RequestedRole;
 import com.hubdelivery.common.exception.CommonErrorCode;
 import com.hubdelivery.common.exception.CommonException;
 import com.hubdelivery.common.security.UserRole;
 import com.hubdelivery.user.domain.entity.User;
 import com.hubdelivery.user.domain.repository.UserRepository;
-import com.hubdelivery.user.domain.type.AffiliationType;
 import com.hubdelivery.user.domain.type.UserStatus;
 import com.hubdelivery.user.presentation.dto.request.UserApproveRequest;
 import com.hubdelivery.user.presentation.dto.response.UserApproveResponse;
@@ -34,9 +34,8 @@ public class UserService {
             throw new CommonException(CommonErrorCode.INVALID_INPUT_VALUE, "PENDING 상태 사용자만 승인할 수 있습니다.");
         }
 
-        // TODO: affiliation_name 기반으로 hubId/companyId 조회 연동
-        // 현재는 가입 당시 값 유지 (없으면 null)
-        validateRoleForAffiliation(user.getAffiliationType(), request.role());
+        validateRoleForRequestedRole(user.getRequestedRole(), request.role());
+        user.approve(request.role(), user.getHubId(), user.getCompanyId());
 
         // TODO: 승인 시 Keycloak 사용자 생성/활성화 + role 부여
         // keycloakAdminClient.provisionAndGrantRole(user, request.role());
@@ -51,29 +50,20 @@ public class UserService {
 
     }
 
-    private void validateRoleForAffiliation(AffiliationType affiliationType, UserRole role) {
-
-        if (affiliationType == null) {
-            throw new CommonException(CommonErrorCode.INVALID_INPUT_VALUE, "소속 타입이 없습니다.");
+    private void validateRoleForRequestedRole(RequestedRole requestedRole, UserRole role) {
+        if (requestedRole == null) {
+            throw new CommonException(CommonErrorCode.INVALID_INPUT_VALUE, "요청 역할 정보가 없습니다.");
         }
 
+        // MASTER라면 이미 role이 MASTER로 저장되어있음
         if (role == UserRole.MASTER) {
             throw new CommonException(CommonErrorCode.INVALID_INPUT_VALUE, "MASTER는 승인 API로 부여할 수 없습니다.");
         }
 
-        switch (affiliationType) {
-            case HUB -> {
-                if (role == UserRole.COMPANY_MANAGER) {
-                    throw new CommonException(CommonErrorCode.INVALID_INPUT_VALUE, "HUB 소속은 COMPANY_MANAGER를 부여할 수 없습니다.");
-                }
-            }
-            case COMPANY -> {
-                if (role == UserRole.HUB_MANAGER || role == UserRole.DELIVERY_MANAGER) {
-                    throw new CommonException(CommonErrorCode.INVALID_INPUT_VALUE, "COMPANY 소속은 HUB/DELIVERY 권한을 부여할 수 없습니다.");
-                }
-            }
+        UserRole expectedRole = requestedRole.toUserRole();
+        if (role != expectedRole) {
+            throw new CommonException(CommonErrorCode.INVALID_INPUT_VALUE, "요청 역할과 승인 역할이 일치하지 않습니다.");
         }
-
     }
 
 }

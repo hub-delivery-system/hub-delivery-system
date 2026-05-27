@@ -9,7 +9,7 @@ import com.hubdelivery.user.domain.entity.User;
 
 public interface UserRepository extends JpaRepository<User, UUID> {
 
-    boolean existsBySlackIdAndDeletedAtIsNull(String slackId);
+    boolean existsBySlackId(String slackId);
 
     Optional<User> findBySlackIdAndDeletedAtIsNull(String slackId);
 
