@@ -13,4 +13,5 @@ public interface UserRepository extends JpaRepository<User, UUID> {
 
     Optional<User> findBySlackIdAndDeletedAtIsNull(String slackId);
 
+    Optional<User> findByIdAndDeletedAtIsNull(UUID userId);
 }
