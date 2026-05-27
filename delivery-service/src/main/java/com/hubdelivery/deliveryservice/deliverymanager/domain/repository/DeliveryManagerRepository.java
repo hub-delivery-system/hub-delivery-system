@@ -2,11 +2,14 @@ package com.hubdelivery.deliveryservice.deliverymanager.domain.repository;
 
 import com.hubdelivery.deliveryservice.deliverymanager.domain.entity.DeliveryManager;
 import com.hubdelivery.deliveryservice.deliverymanager.domain.type.DeliveryManagerType;
+import jakarta.persistence.LockModeType;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -16,6 +19,21 @@ public interface DeliveryManagerRepository extends JpaRepository<DeliveryManager
     @Query("SELECT COALESCE(MAX(dm.sequence), 0) FROM DeliveryManager dm " +
            "WHERE dm.hubId = :hubId AND dm.type = :type AND dm.deletedAt IS NULL")
     int findMaxSequence(@Param("hubId") UUID hubId, @Param("type") DeliveryManagerType type);
+
+    // HUB_DELIVERY 전용 순번 조회 (hubId 없이 type 기준)
+    @Query("SELECT COALESCE(MAX(dm.sequence), 0) FROM DeliveryManager dm " +
+           "WHERE dm.type = :type AND dm.deletedAt IS NULL")
+    int findMaxSequenceByType(@Param("type") DeliveryManagerType type);
+
+    // 정원 체크: HUB_DELIVERY 전체 행 잠금 조회 (FOR UPDATE로 행 직접 잠금 → 동시성 제어)
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT dm FROM DeliveryManager dm WHERE dm.type = :type AND dm.deletedAt IS NULL")
+    List<DeliveryManager> findAllByTypeForUpdate(@Param("type") DeliveryManagerType type);
+
+    // 정원 체크: COMPANY_DELIVERY 허브별 행 잠금 조회 (FOR UPDATE로 행 직접 잠금 → 동시성 제어)
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT dm FROM DeliveryManager dm WHERE dm.hubId = :hubId AND dm.type = :type AND dm.deletedAt IS NULL")
+    List<DeliveryManager> findAllByHubIdAndTypeForUpdate(@Param("hubId") UUID hubId, @Param("type") DeliveryManagerType type);
 
     // 순환 배정 1단계: 현재 순번 이후의 가장 작은 순번 담당자 조회
     @Query("SELECT dm FROM DeliveryManager dm " +

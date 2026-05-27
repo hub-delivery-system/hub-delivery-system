@@ -29,13 +29,15 @@ public class DeliveryManagerService {
     private final HubServiceClient hubServiceClient;
     private final UserServiceClient userServiceClient;
 
+    private static final int MAX_CAPACITY = 10;
+
     @Transactional
     public DeliveryManagerResponse create(DeliveryManagerCreateRequest request, String userId, UserRole role) {
         checkWritePermission(role, userId, request.getHubId());
-        validateHubExists(request.getHubId());
+        validateRequest(request);
+        checkCapacity(request.getType(), request.getHubId());
 
-        // 허브+타입 기준 마지막 순번 + 1로 자동 배정
-        int sequence = deliveryManagerRepository.findMaxSequence(request.getHubId(), request.getType()) + 1;
+        int sequence = calculateSequence(request.getType(), request.getHubId());
 
         DeliveryManager manager = DeliveryManager.builder()
                 .userId(request.getUserId())
@@ -80,12 +82,15 @@ public class DeliveryManagerService {
         DeliveryManager manager = findActiveManager(id);
         checkWritePermission(role, userId, manager.getHubId());
 
-        validateHubExists(request.getHubId());
+        if (request.getHubId() != null) {
+            validateHubExists(request.getHubId());
+        }
 
-        // hubId가 변경된 경우 새 허브 기준으로 순번 재배정
-        boolean hubChanged = !manager.getHubId().equals(request.getHubId());
-        int sequence = hubChanged
-                ? deliveryManagerRepository.findMaxSequence(request.getHubId(), request.getType()) + 1
+        // hubId 또는 type이 변경된 경우 새 기준으로 순번 재배정
+        boolean changed = !java.util.Objects.equals(manager.getHubId(), request.getHubId())
+                || !manager.getType().equals(request.getType());
+        int sequence = changed
+                ? calculateSequence(request.getType(), request.getHubId())
                 : manager.getSequence();
 
         manager.update(request.getHubId(), request.getCompanyId(), request.getType(), sequence);
@@ -145,6 +150,34 @@ public class DeliveryManagerService {
         return deliveryManagerRepository.findByIdAndDeletedAtIsNull(managerId)
                 .map(DeliveryManager::getSequence)
                 .orElse(0);
+    }
+
+    // COMPANY_DELIVERY는 hubId 필수 + 허브 존재 검증, HUB_DELIVERY는 hubId 불필요
+    private void validateRequest(DeliveryManagerCreateRequest request) {
+        if (request.getType() == DeliveryManagerType.COMPANY_DELIVERY) {
+            if (request.getHubId() == null) {
+                throw new DeliveryManagerException(DeliveryManagerErrorCode.HUB_NOT_FOUND);
+            }
+            validateHubExists(request.getHubId());
+        }
+    }
+
+    // 타입별 정원 체크 (FOR UPDATE로 행 직접 잠금 → 동시 승인 시 초과 방지)
+    private void checkCapacity(DeliveryManagerType type, UUID hubId) {
+        int count = (type == DeliveryManagerType.HUB_DELIVERY)
+                ? deliveryManagerRepository.findAllByTypeForUpdate(type).size()
+                : deliveryManagerRepository.findAllByHubIdAndTypeForUpdate(hubId, type).size();
+
+        if (count >= MAX_CAPACITY) {
+            throw new DeliveryManagerException(DeliveryManagerErrorCode.CAPACITY_EXCEEDED);
+        }
+    }
+
+    // 타입별 순번 계산 (HUB_DELIVERY는 전체 기준, COMPANY_DELIVERY는 허브 기준)
+    private int calculateSequence(DeliveryManagerType type, UUID hubId) {
+        return (type == DeliveryManagerType.HUB_DELIVERY)
+                ? deliveryManagerRepository.findMaxSequenceByType(type) + 1
+                : deliveryManagerRepository.findMaxSequence(hubId, type) + 1;
     }
 
     // 생성·수정·삭제·목록 조회: MASTER 또는 HUB_MANAGER(담당 허브)만 허용

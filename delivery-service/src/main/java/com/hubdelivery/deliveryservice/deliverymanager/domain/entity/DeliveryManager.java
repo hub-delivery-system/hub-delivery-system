@@ -30,7 +30,8 @@ public class DeliveryManager extends BaseEntity {
     @Column(nullable = false, updatable = false)
     private UUID userId;
 
-    @Column(nullable = false)
+    // HUB_DELIVERY 타입은 특정 허브 소속이 아니므로 null 허용
+    @Column(nullable = true)
     private UUID hubId;
 
     private UUID companyId;
