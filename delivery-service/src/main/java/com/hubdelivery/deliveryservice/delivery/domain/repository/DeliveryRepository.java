@@ -21,4 +21,10 @@ public interface DeliveryRepository extends JpaRepository<Delivery, UUID> {
 
     // DELIVERY_MANAGER: 자신이 담당하는 배송 목록
     Page<Delivery> findAllByDeliveryManagerIdAndDeletedAtIsNull(UUID deliveryManagerId, Pageable pageable);
+
+    // COMPANY_DELIVERY_MANAGER 순환 배정용: endHubId 기준 가장 최근 배정된 담당자 ID 조회
+    @Query("SELECT d.deliveryManagerId FROM Delivery d " +
+           "WHERE d.endHubId = :endHubId AND d.deliveryManagerId IS NOT NULL AND d.deletedAt IS NULL " +
+           "ORDER BY d.createdAt DESC")
+    Page<UUID> findLatestDeliveryManagerIdByEndHub(@Param("endHubId") UUID endHubId, Pageable pageable);
 }
