@@ -63,6 +63,11 @@ public class DeliveryRouteService {
         DeliveryRoute route = findActive(id);
         checkUpdatePermission(role, userId, route);
 
+        // 상태 전이 검증: 현재 상태에서 요청 상태로의 전이가 허용되는지 확인
+        if (request.getStatus() != null && !route.getStatus().canTransitionTo(request.getStatus())) {
+            throw new DeliveryRouteException(DeliveryRouteErrorCode.INVALID_STATUS_TRANSITION);
+        }
+
         route.update(
                 request.getStatus(),
                 request.getRealDistance(),
