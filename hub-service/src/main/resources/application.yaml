@@ -81,3 +81,8 @@ management:
     export:
       prometheus:
         enabled: true
+
+kakao:
+  mobility:
+    api-key: ${KAKAO_REST_API_KEY}
+    base-url: ${KAKAO_MOBILITY_BASE_URL:https://apis-navi.kakaomobility.com}

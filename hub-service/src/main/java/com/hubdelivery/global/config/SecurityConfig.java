@@ -1,6 +1,6 @@
-package com.hubdelivery.hub.config;
+package com.hubdelivery.global.config;
 
-import com.hubdelivery.hub.filter.HeaderAuthenticationFilter;
+import com.hubdelivery.global.filter.HeaderAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
