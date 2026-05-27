@@ -1,6 +1,7 @@
 package com.hubdelivery.company.company.application.service;
 
 import com.hubdelivery.common.response.PageResponse;
+import com.hubdelivery.common.security.UserRole;
 import com.hubdelivery.company.company.domain.entity.Company;
 import com.hubdelivery.company.company.domain.exception.CompanyNotFoundException;
 import com.hubdelivery.company.company.domain.repository.CompanyRepository;
@@ -26,8 +27,9 @@ public class CompanyService {
 
     /** 업체 생성 로직 */
     @Transactional
-    public CompanyResponseDto createCompany(CompanyCreateRequestDto request) {
-        // TODO: hub-service 연동 확정 후 hubId 존재 여부와 HUB_MANAGER 담당 허브 여부를 검증한다.
+    public CompanyResponseDto createCompany(UUID userId, UserRole userRole, CompanyCreateRequestDto request) {
+        // TODO: userId/userRole 기반 scope 권한 검증
+        // TODO: hub-service 연동 후 hubId 존재 여부 검증
         // TODO: 여러 검증 로직 추가
         Company company = companyRepository.save(request.toEntity());
         return CompanyResponseDto.from(company);
@@ -50,8 +52,9 @@ public class CompanyService {
 
     /** 업체 수정 로직 */
     @Transactional
-    public CompanyResponseDto updateCompany(UUID companyId, CompanyUpdateRequestDto request) {
-        // TODO: hub-service 연동 확정 후 hubId 존재 여부와 HUB_MANAGER 담당 허브 여부를 검증한다.
+    public CompanyResponseDto updateCompany(UUID userId, UserRole userRole, UUID companyId, CompanyUpdateRequestDto request) {
+        // TODO: userId/userRole 기반 scope 권한 검증
+        // TODO: hub-service 연동 후 hubId 존재 여부 검증
         Company company = companyRepository.findByIdAndDeletedAtIsNull(companyId)
                 .orElseThrow(CompanyNotFoundException::new);
 
@@ -62,10 +65,12 @@ public class CompanyService {
 
     /** 업체 삭제 로직 */
     @Transactional
-    public void deleteCompany(UUID companyId, String deletedBy) {
+    public void deleteCompany(UUID userId, UserRole userRole, UUID companyId) {
+        // TODO: userId/userRole 기반 scope 권한 검증
         Company company = companyRepository.findByIdAndDeletedAtIsNull(companyId)
                 .orElseThrow(CompanyNotFoundException::new);
 
-        company.softDelete(deletedBy);
+        // TODO: user-service 연동 후 userId 대신 username 으로 기록
+        company.softDelete(userId.toString());
     }
 }

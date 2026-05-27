@@ -1,8 +1,8 @@
 package com.hubdelivery.company.company.presentation.controller;
 
-import com.hubdelivery.common.audit.AuditorAwareImpl;
 import com.hubdelivery.common.response.ApiResponse;
 import com.hubdelivery.common.response.PageResponse;
+import com.hubdelivery.common.security.UserRole;
 import com.hubdelivery.company.company.application.service.CompanyService;
 import com.hubdelivery.company.company.presentation.dto.request.CompanyCreateRequestDto;
 import com.hubdelivery.company.company.presentation.dto.request.CompanyUpdateRequestDto;
@@ -25,6 +25,9 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class CompanyController {
 
+    private static final String X_USER_ID = "X-User-Id";
+    private static final String X_ROLE = "X-Role";
+
     private final CompanyService companyService;
 
     @PostMapping
@@ -37,8 +40,12 @@ public class CompanyController {
     })
     @PreAuthorize("hasAnyRole('MASTER', 'HUB_MANAGER')")
     @ResponseStatus(HttpStatus.CREATED)
-    public ApiResponse<CompanyResponseDto> createCompany(@Valid @RequestBody CompanyCreateRequestDto request) {
-        return ApiResponse.created(companyService.createCompany(request));
+    public ApiResponse<CompanyResponseDto> createCompany(
+            @RequestHeader(X_USER_ID) UUID userId,
+            @RequestHeader(X_ROLE) UserRole userRole,
+            @Valid @RequestBody CompanyCreateRequestDto request
+    ) {
+        return ApiResponse.created(companyService.createCompany(userId, userRole, request));
     }
 
     @GetMapping
@@ -79,12 +86,15 @@ public class CompanyController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 본문 검증 실패"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "업체를 찾을 수 없음")
     })
+    @PreAuthorize("hasAnyRole('MASTER', 'HUB_MANAGER', 'COMPANY_MANAGER')")
     public ApiResponse<CompanyResponseDto> updateCompany(
+            @RequestHeader(X_USER_ID) UUID userId,
+            @RequestHeader(X_ROLE) UserRole userRole,
             @Parameter(description = "업체 ID")
             @PathVariable UUID companyId,
             @Valid @RequestBody CompanyUpdateRequestDto request
     ) {
-        return ApiResponse.ok(companyService.updateCompany(companyId, request));
+        return ApiResponse.ok(companyService.updateCompany(userId, userRole, companyId, request));
     }
 
     @DeleteMapping("/{companyId}")
@@ -93,12 +103,14 @@ public class CompanyController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "삭제 성공"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "업체를 찾을 수 없음")
     })
+    @PreAuthorize("hasAnyRole('MASTER', 'HUB_MANAGER')")
     public ApiResponse<Void> deleteCompany(
+            @RequestHeader(X_USER_ID) UUID userId,
+            @RequestHeader(X_ROLE) UserRole userRole,
             @Parameter(description = "업체 ID")
-            @PathVariable UUID companyId,
-            @RequestHeader(value = AuditorAwareImpl.X_USER_ID, defaultValue = AuditorAwareImpl.SYSTEM_AUDITOR) String deletedBy
+            @PathVariable UUID companyId
     ) {
-        companyService.deleteCompany(companyId, deletedBy);
+        companyService.deleteCompany(userId, userRole, companyId);
         return ApiResponse.ok(null);
     }
 }
