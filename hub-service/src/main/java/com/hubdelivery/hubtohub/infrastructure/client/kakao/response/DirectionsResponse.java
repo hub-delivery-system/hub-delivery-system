@@ -1,6 +1,7 @@
 package com.hubdelivery.hubtohub.infrastructure.client.kakao.response;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -20,9 +21,16 @@ public class DirectionsResponse {
     @AllArgsConstructor
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Route {
-        private String resultCode;
+
+        @JsonProperty("result_code")
+        private Integer resultCode;
+
+        @JsonProperty("result_msg")
         private String resultMsg;
+
+
         private Summary summary;
+        private List<Section> sections;
     }
 
     @Getter
@@ -30,7 +38,28 @@ public class DirectionsResponse {
     @AllArgsConstructor
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Summary {
-        private Integer distance;        // 거리 (미터)
-        private Integer duration;        // 소요시간 (초)
+        private Integer distance;
+        private Integer duration;
+    }
+
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Section {
+        private Integer distance;       // 구간 거리 (m)
+        private Integer duration;       // 구간 시간 (초)
+        private Bound bound;
+    }
+
+    @Getter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class Bound {
+        private Double minX;
+        private Double minY;
+        private Double maxX;
+        private Double maxY;
     }
 }

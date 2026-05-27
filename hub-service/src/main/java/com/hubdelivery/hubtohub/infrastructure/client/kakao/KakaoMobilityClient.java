@@ -28,7 +28,7 @@ public class KakaoMobilityClient {
         String destParam = toParam(destination);
 
         try {
-            return kakaoMobilityRestClient.get()
+            String rawResponse = kakaoMobilityRestClient.get()
                     .uri(uriBuilder -> {
                         uriBuilder
                                 .path("/v1/directions")
@@ -47,7 +47,11 @@ public class KakaoMobilityClient {
                         return uriBuilder.build();
                     })
                     .retrieve()
-                    .body(DirectionsResponse.class);
+                    .body(String.class);
+
+
+            // 객체로 변환
+            return convertToResponse(rawResponse);
 
         } catch (RestClientResponseException e) {
             log.error("카카오 API 호출 실패 - status: {}, body: {}",
@@ -64,6 +68,15 @@ public class KakaoMobilityClient {
      */
     private String toParam(Coordinate coord) {
         return coord.longitude() + "," + coord.latitude();
+    }
+
+    private DirectionsResponse convertToResponse(String json) {
+        try {
+            return new com.fasterxml.jackson.databind.ObjectMapper()
+                    .readValue(json, DirectionsResponse.class);
+        } catch (Exception e) {
+            throw new RuntimeException("응답 파싱 실패: " + json, e);
+        }
     }
 
     public record Coordinate(BigDecimal latitude, BigDecimal longitude){}
