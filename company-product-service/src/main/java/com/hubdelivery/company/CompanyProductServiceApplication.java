@@ -5,11 +5,12 @@ import com.hubdelivery.common.exception.GlobalExceptionHandler;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
+import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.Import;
 
 @SpringBootApplication
 @EnableDiscoveryClient
-// TODO: Feign client 구현 시 @EnableFeignClients 를 추가
+@EnableFeignClients(basePackages = "com.hubdelivery.company.company.infrastructure.client")
 @Import({ JpaAuditingConfig.class, GlobalExceptionHandler.class })
 public class CompanyProductServiceApplication {
 
