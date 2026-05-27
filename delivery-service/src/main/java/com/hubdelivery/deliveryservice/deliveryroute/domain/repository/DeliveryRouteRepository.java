@@ -10,7 +10,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface DeliveryRouteRepository extends JpaRepository<DeliveryRoute, UUID> {
+public interface DeliveryRouteRepository extends JpaRepository<DeliveryRoute, UUID>, DeliveryRouteRepositoryCustom {
 
     Optional<DeliveryRoute> findByIdAndDeletedAtIsNull(UUID id);
 
