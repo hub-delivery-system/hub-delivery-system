@@ -43,4 +43,19 @@ public interface DeliveryManagerRepository extends JpaRepository<DeliveryManager
     Page<DeliveryManager> findAllByHubIdAndDeletedAtIsNull(UUID hubId, Pageable pageable);
 
     Optional<DeliveryManager> findByIdAndDeletedAtIsNull(UUID id);
+
+    // HUB_DELIVERY 전용 순환 배정 1단계: hubId 조건 없이 type + sequence > current 조회
+    @Query("SELECT dm FROM DeliveryManager dm WHERE dm.type = :type " +
+           "AND dm.sequence > :currentSequence AND dm.deletedAt IS NULL ORDER BY dm.sequence ASC")
+    Page<DeliveryManager> findNextByTypeAfter(
+            @Param("type") DeliveryManagerType type,
+            @Param("currentSequence") int currentSequence,
+            Pageable pageable);
+
+    // HUB_DELIVERY 전용 순환 배정 2단계: wrap-around (type 기준)
+    @Query("SELECT dm FROM DeliveryManager dm WHERE dm.type = :type " +
+           "AND dm.deletedAt IS NULL ORDER BY dm.sequence ASC")
+    Page<DeliveryManager> findFirstByType(
+            @Param("type") DeliveryManagerType type,
+            Pageable pageable);
 }

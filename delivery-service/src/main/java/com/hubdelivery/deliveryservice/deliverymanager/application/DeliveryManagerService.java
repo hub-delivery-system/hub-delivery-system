@@ -100,7 +100,7 @@ public class DeliveryManagerService {
     }
 
     /**
-     * 순환 배정: 현재 순번 이후 담당자 조회 → 없으면 처음으로 wrap-around
+     * 순환 배정 (COMPANY_DELIVERY 전용): hubId 소속 담당자 중 현재 순번 이후 → 없으면 wrap-around
      */
     @Transactional(readOnly = true)
     public DeliveryManagerResponse assignNext(UUID hubId, DeliveryManagerType type, int currentSequence) {
@@ -116,6 +116,35 @@ public class DeliveryManagerService {
                         .findFirst())
                 .map(DeliveryManagerResponse::from)
                 .orElseThrow(() -> new DeliveryManagerException(DeliveryManagerErrorCode.NO_AVAILABLE_MANAGER));
+    }
+
+    /**
+     * 순환 배정 (HUB_DELIVERY 전용): hubId 없이 type 기준으로 순환 배정
+     */
+    @Transactional(readOnly = true)
+    public DeliveryManagerResponse assignNextByType(DeliveryManagerType type, int currentSequence) {
+        Pageable first = PageRequest.of(0, 1);
+
+        return deliveryManagerRepository.findNextByTypeAfter(type, currentSequence, first)
+                .getContent()
+                .stream()
+                .findFirst()
+                .or(() -> deliveryManagerRepository.findFirstByType(type, first)
+                        .getContent()
+                        .stream()
+                        .findFirst())
+                .map(DeliveryManagerResponse::from)
+                .orElseThrow(() -> new DeliveryManagerException(DeliveryManagerErrorCode.NO_AVAILABLE_MANAGER));
+    }
+
+    /**
+     * 담당자 ID로 sequence 조회 (순환 배정 currentSequence 추적용)
+     */
+    @Transactional(readOnly = true)
+    public int getSequenceById(UUID managerId) {
+        return deliveryManagerRepository.findByIdAndDeletedAtIsNull(managerId)
+                .map(DeliveryManager::getSequence)
+                .orElse(0);
     }
 
     // 생성·수정·삭제·목록 조회: MASTER 또는 HUB_MANAGER(담당 허브)만 허용
