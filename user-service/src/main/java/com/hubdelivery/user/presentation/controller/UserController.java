@@ -1,10 +1,14 @@
 package com.hubdelivery.user.presentation.controller;
 
+import java.util.List;
 import java.util.UUID;
 
 import jakarta.validation.Valid;
 
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,7 +20,10 @@ import lombok.RequiredArgsConstructor;
 import com.hubdelivery.common.response.ApiResponse;
 import com.hubdelivery.user.application.service.UserService;
 import com.hubdelivery.user.presentation.dto.request.UserApproveRequest;
+import com.hubdelivery.user.presentation.dto.request.UserUpdateRequest;
 import com.hubdelivery.user.presentation.dto.response.UserApproveResponse;
+import com.hubdelivery.user.presentation.dto.response.UserRejectResponse;
+import com.hubdelivery.user.presentation.dto.response.UserResponse;
 
 @RestController
 @RequiredArgsConstructor
@@ -25,13 +32,53 @@ public class UserController {
 
     private final UserService userService;
 
-    @PutMapping("/{userId}/approved")
+    @PatchMapping("/{userId}/approved")
     @PreAuthorize("hasAnyRole('MASTER', 'HUB_MANAGER')")
     public ApiResponse<UserApproveResponse> approve(
             @PathVariable UUID userId,
             @Valid @RequestBody UserApproveRequest request
     ) {
         return ApiResponse.ok(userService.approve(userId, request));
+    }
+
+    @PatchMapping("/{userId}/reject")
+    @PreAuthorize("hasAnyRole('MASTER', 'HUB_MANAGER')")
+    public ApiResponse<UserRejectResponse> reject(
+            @PathVariable UUID userId
+    ) {
+        return ApiResponse.ok(userService.reject(userId));
+    }
+
+    @GetMapping
+    @PreAuthorize("hasRole('MASTER')")
+    public ApiResponse<List<UserResponse>> getUsers() {
+        return ApiResponse.ok(userService.getUsers());
+    }
+
+    @GetMapping("/{userId}")
+    @PreAuthorize("hasRole('MASTER') or @userAccessGuard.isSelf(#userId)")
+    public ApiResponse<UserResponse> getUser(
+            @PathVariable UUID userId
+    ) {
+        return ApiResponse.ok(userService.getUser());
+    }
+
+    @PutMapping("/{userId}")
+    @PreAuthorize("hasRole('MASTER')")
+    public ApiResponse<UserResponse> updateUser(
+            @PathVariable UUID userId,
+            @Valid @RequestBody UserUpdateRequest request
+    ) {
+        return ApiResponse.ok(userService.updateUser(userId, request);
+    }
+
+    @DeleteMapping("/{userId}")
+    @PreAuthorize("hasRole('MASTER')")
+    public ApiResponse<UserResponse> deleteUser(
+            @PathVariable UUID userId
+
+    ) {
+        return ApiResponse.ok(null);
     }
 
 }
