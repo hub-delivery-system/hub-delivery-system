@@ -1,6 +1,7 @@
 package com.hubdelivery.company.product.domain.entity;
 
 import com.hubdelivery.common.entity.BaseEntity;
+import com.hubdelivery.company.product.domain.exception.ProductStockNotEnoughException;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -46,5 +47,20 @@ public class Product extends BaseEntity {
         this.hubId = hubId;
         this.companyId = companyId;
         this.stockQuantity = stockQuantity;
+    }
+
+    public void validateStock(int quantity) {
+        if (this.stockQuantity < quantity) {
+            throw new ProductStockNotEnoughException();
+        }
+    }
+
+    public void decreaseStock(int quantity) {
+        validateStock(quantity);
+        this.stockQuantity -= quantity;
+    }
+
+    public void increaseStock(int quantity) {
+        this.stockQuantity += quantity;
     }
 }
