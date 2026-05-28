@@ -8,11 +8,15 @@ import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Getter
+@Builder
 @NoArgsConstructor
+@AllArgsConstructor
 public class DeliveryCreateRequest {
 
     @NotNull(message = "orderId는 필수입니다.")
@@ -40,7 +44,9 @@ public class DeliveryCreateRequest {
     private List<RouteRequest> routes;
 
     @Getter
+    @Builder
     @NoArgsConstructor
+    @AllArgsConstructor
     public static class RouteRequest {
 
         @NotNull(message = "sequence는 필수입니다.")
