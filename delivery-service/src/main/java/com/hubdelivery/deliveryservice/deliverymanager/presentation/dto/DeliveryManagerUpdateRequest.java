@@ -10,7 +10,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class DeliveryManagerUpdateRequest {
 
-    @NotNull(message = "hubId는 필수입니다.")
+    // COMPANY_DELIVERY 타입일 때 필수, HUB_DELIVERY 타입은 null
     private UUID hubId;
 
     private UUID companyId;

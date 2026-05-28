@@ -7,6 +7,7 @@ import com.hubdelivery.deliveryservice.deliverymanager.application.DeliveryManag
 import com.hubdelivery.deliveryservice.deliverymanager.domain.type.DeliveryManagerType;
 import com.hubdelivery.deliveryservice.deliverymanager.presentation.dto.DeliveryManagerCreateRequest;
 import com.hubdelivery.deliveryservice.deliverymanager.presentation.dto.DeliveryManagerResponse;
+import com.hubdelivery.deliveryservice.deliverymanager.presentation.dto.DeliveryManagerSearchCondition;
 import com.hubdelivery.deliveryservice.deliverymanager.presentation.dto.DeliveryManagerUpdateRequest;
 import jakarta.validation.Valid;
 import java.util.UUID;
@@ -15,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -44,10 +46,11 @@ public class DeliveryManagerController {
     public ResponseEntity<ApiResponse<PageResponse<DeliveryManagerResponse>>> getAll(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
+            @ModelAttribute DeliveryManagerSearchCondition cond,
             @RequestHeader("X-User-Id") String userId,
             @RequestHeader("X-Role") String role) {
         return ResponseEntity.ok(ApiResponse.ok(
-                deliveryManagerService.getAll(page, size, userId, UserRole.valueOf(role))));
+                deliveryManagerService.getAll(page, size, cond, userId, UserRole.valueOf(role))));
     }
 
     @GetMapping("/{id}")
