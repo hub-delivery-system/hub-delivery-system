@@ -29,17 +29,22 @@ public class Product extends BaseEntity {
     @Column(name = "company_id", nullable = false)
     private UUID companyId;
 
+    @Column(name = "stock_quantity", nullable = false, columnDefinition = "integer default 0")
+    private int stockQuantity;
+
     @Builder
-    public Product(String productName, UUID hubId, UUID companyId) {
+    public Product(String productName, UUID hubId, UUID companyId, int stockQuantity) {
         this.productName = productName;
         this.hubId = hubId;
         this.companyId = companyId;
+        this.stockQuantity = stockQuantity;
     }
 
     /** 상품 수정 메서드 */
-    public void update(String productName, UUID hubId, UUID companyId) {
+    public void update(String productName, UUID hubId, UUID companyId, int stockQuantity) {
         this.productName = productName;
         this.hubId = hubId;
         this.companyId = companyId;
+        this.stockQuantity = stockQuantity;
     }
 }

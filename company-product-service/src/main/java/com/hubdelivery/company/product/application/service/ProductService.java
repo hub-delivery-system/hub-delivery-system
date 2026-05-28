@@ -69,7 +69,7 @@ public class ProductService {
         validateHubExists(userId, userRole, request.hubId());
         validateCompanyExists(request.companyId());
 
-        product.update(request.productName(), request.hubId(), request.companyId());
+        product.update(request.productName(), request.hubId(), request.companyId(), request.stockQuantity());
 
         return ProductResponseDto.from(product);
     }
