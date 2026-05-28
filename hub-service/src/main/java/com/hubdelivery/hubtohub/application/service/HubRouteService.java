@@ -2,6 +2,7 @@ package com.hubdelivery.hubtohub.application.service;
 
 import com.hubdelivery.hub.domain.entity.HubEntity;
 import com.hubdelivery.hub.domain.repository.HubRepository;
+import com.hubdelivery.hubtohub.domain.entity.CentralHubEntity;
 import com.hubdelivery.hubtohub.domain.exception.KakaoApiException;
 import com.hubdelivery.hubtohub.domain.exception.KakaoRouteNotFoundException;
 import com.hubdelivery.hubtohub.domain.repository.CentralHubRepository;
@@ -17,6 +18,7 @@ import org.springframework.web.client.RestClientResponseException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
+import java.util.Objects;
 
 @Slf4j
 @Service
@@ -37,7 +39,7 @@ public class HubRouteService {
                     fromHub.getHubName(), toHub.getHubName());
 
             // 1. DB에서 중앙허브 조회
-            List<HubEntity> centralHubs = getCentralHubsFromDb();
+            List<HubEntity> centralHubs = getCentralHubsFromDb_Simple();
 
             // 2. 각 허브의 가장 가까운 중앙허브 찾기
             HubEntity fromCentralHub = findNearestCentralHub(fromHub, centralHubs);
@@ -94,12 +96,10 @@ public class HubRouteService {
      * DB에서 중앙허브 조회
      */
     @Transactional(readOnly = true)
-    public List<HubEntity> getCentralHubsFromDb() {
+    public List<HubEntity> getCentralHubsFromDb_Simple() {
         return centralHubRepository.findAll().stream()
-                .map(centralHub -> hubRepository.findById(centralHub.getHubId())
-                        .orElseThrow(() -> new IllegalArgumentException(
-                                "중앙허브 Hub ID를 찾을 수 없습니다: " + centralHub.getHubId()
-                        )))
+                .map(CentralHubEntity::getHub)
+                .filter(Objects::nonNull)
                 .toList();
     }
 

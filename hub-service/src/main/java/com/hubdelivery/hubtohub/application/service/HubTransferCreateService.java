@@ -1,5 +1,6 @@
 package com.hubdelivery.hubtohub.application.service;
 
+
 import com.hubdelivery.hub.domain.entity.HubEntity;
 import com.hubdelivery.hub.domain.repository.HubRepository;
 import com.hubdelivery.hubtohub.application.dto.ResGetHubTransferDto;
@@ -44,7 +45,7 @@ public class HubTransferCreateService {
     public ResGetHubTransferDto createAndSaveNewRoute(HubEntity fromHub, HubEntity toHub) {
         try {
             log.info("카카오 API 응답 시작");
-            // 1.  API 호출
+            // 1. API 호출
             DirectionsResponse directionsResponse = hubRouteService.calculateRoute(fromHub, toHub);
             log.info("카카오 API 응답 받음");
 
@@ -56,7 +57,6 @@ public class HubTransferCreateService {
             long durationSec = summary.getDuration();
 
             log.info("경로 정보 파싱 완료 - 거리: {}km, 시간: {}분", distanceKm, (durationSec / 60));
-
 
             // 3. DB에 기본 경로 정보 저장
             HubTransferEntity entity = HubTransferEntity.builder()
@@ -70,7 +70,7 @@ public class HubTransferCreateService {
 
             // 4. 경유지 Entity 생성 및 저장
             List<HubTransferWaypointEntity> waypointEntities = createAndSaveWaypoints(
-                    savedEntity.getId(),
+                    savedEntity,
                     fromHub,
                     toHub
             );
@@ -97,12 +97,12 @@ public class HubTransferCreateService {
      * 경유지 Entity 생성 및 저장
      */
     public List<HubTransferWaypointEntity> createAndSaveWaypoints(
-            UUID hubToHubId,
+            HubTransferEntity transferEntity,
             HubEntity fromHub,
             HubEntity toHub) {
 
         // 1. 중앙허브 조회
-        List<HubEntity> centralHubs = hubRouteService.getCentralHubsFromDb();
+        List<HubEntity> centralHubs = hubRouteService.getCentralHubsFromDb_Simple();
 
         // 2. 가장 가까운 중앙허브 찾기
         HubEntity fromCentralHub = hubRouteService.findNearestCentralHub(fromHub, centralHubs);
@@ -110,7 +110,7 @@ public class HubTransferCreateService {
 
         // 3. 중앙허브 Entity 조회 (Hub ID로)
         CentralHubEntity fromCentralHubEntity = centralHubRepository.findByHubIdIsActive(fromCentralHub.getId())
-                .orElseThrow(() -> new IllegalArgumentException("중앙허브를 찾을 수 없습니다: " + fromCentralHub.getId()));
+                .orElseThrow(() -> new HubTransferInvalidCentralHub("존재하지 않는 중앙 허브입니다."));
 
         List<HubTransferWaypointEntity> waypoints = new ArrayList<>();
         int sequence = 1;
@@ -118,12 +118,13 @@ public class HubTransferCreateService {
         // 4. 출발 중앙허브가 출발지와 다르면 경유지에 추가
         if (!fromCentralHub.getId().equals(fromHub.getId())) {
             HubTransferWaypointEntity fromWaypoint = HubTransferWaypointEntity.builder()
-                    .hubToHubId(hubToHubId)
-                    .centralHubId(fromCentralHubEntity.getId())
+                    .hubTransfer(transferEntity)
+                    .centralHub(fromCentralHubEntity)
                     .sequence(sequence++)
                     .build();
             waypointRepository.save(fromWaypoint);
             waypoints.add(fromWaypoint);
+
             log.debug("출발 중앙허브 경유지 추가 - sequence: {}", sequence - 1);
         } else {
             log.debug("출발 중앙허브가 출발지와 동일하므로 경유지에서 제외");
@@ -135,9 +136,10 @@ public class HubTransferCreateService {
             CentralHubEntity toCentralHubEntity = centralHubRepository.findByHubIdIsActive(toCentralHub.getId())
                     .orElseThrow(() -> new HubTransferInvalidCentralHub("존재하지 않는 중앙 허브입니다."));
 
+            // ✅ HubTransferWaypointEntity는 ID만 저장 (관계는 조회용)
             HubTransferWaypointEntity toWaypoint = HubTransferWaypointEntity.builder()
-                    .hubToHubId(hubToHubId)
-                    .centralHubId(toCentralHubEntity.getId())
+                    .hubTransfer(transferEntity)
+                    .centralHub(toCentralHubEntity)
                     .sequence(sequence++)
                     .build();
             waypointRepository.save(toWaypoint);
@@ -156,7 +158,8 @@ public class HubTransferCreateService {
     }
 
     /**
-     * DB에서 조회한 Entity로 ResponseDto 생성
+     * ✅ DB에서 조회한 Entity로 ResponseDto 생성
+     * 관계로 로드된 데이터 사용
      */
     public ResGetHubTransferDto buildResponseDtoFromDb(HubTransferEntity entity) {
         // DB에서 경유지 조회
@@ -167,22 +170,92 @@ public class HubTransferCreateService {
     }
 
     /**
-     * ResponseDto 생성 (Entity + Waypoint)
+     *
+     * 관계로부터 데이터 조회 (추가 쿼리 없음!)
      */
     public ResGetHubTransferDto buildResponseDtoFromEntity(
             HubTransferEntity entity,
-            List< HubTransferWaypointEntity > waypointEntities) {
+            List<HubTransferWaypointEntity> waypointEntities) {
 
-        // Waypoint Entity를 ResponseDto로 변환
+        // waypoints가 비어있으면 빈 list 반환
+        if (waypointEntities.isEmpty()) {
+            return ResGetHubTransferDto.builder()
+                    .routeId(entity.getId())
+                    .startHubId(entity.getStartHubId())
+                    .endHubId(entity.getEndHubId())
+                    .distanceKm(entity.getDistance())
+                    .durationMinutes((int) (entity.getDurationSec() / 60))
+                    .durationSec(entity.getDurationSec())
+                    .waypoints(List.of())
+                    .build();
+        }
+
         List<ResGetHubTransferDto.WaypointInfo> waypoints = waypointEntities.stream()
                 .map(waypoint -> {
-                    // CentralHubEntity 조회
-                    CentralHubEntity centralHub = centralHubRepository.findById(waypoint.getCentralHubId())
-                            .orElseThrow(() -> new HubTransferInvalidCentralHub("존재하지 않는 중앙 허브입니다."));
+                    CentralHubEntity centralHub = waypoint.getCentralHub();
+                    if (centralHub == null) {
+                        throw new HubTransferInvalidCentralHub("존재하지 않는 중앙 허브입니다.");
+                    }
 
-                    // Hub 정보 조회 (위도, 경도)
-                    HubEntity hub = hubRepository.findById(centralHub.getHubId())
-                            .orElseThrow(() -> new HubTransferInvalidHub("존재하지 않는 허브입니다."));
+                    HubEntity hub = centralHub.getHub();
+                    if (hub == null) {
+                        throw new HubTransferInvalidHub("존재하지 않는 허브입니다.");
+                    }
+
+                    return ResGetHubTransferDto.WaypointInfo.builder()
+                            .name(hub.getHubName())
+                            .latitude(hub.getLatitude())
+                            .longitude(hub.getLongitude())
+                            .sequence(waypoint.getSequence())
+                            .build();
+                })
+                .toList();
+
+        return ResGetHubTransferDto.builder()
+                .routeId(entity.getId())
+                .startHubId(entity.getStartHubId())
+                .endHubId(entity.getEndHubId())
+                .distanceKm(entity.getDistance())
+                .durationMinutes((int) (entity.getDurationSec() / 60))
+                .durationSec(entity.getDurationSec())
+                .waypoints(waypoints)
+                .build();
+    }
+
+    /**
+     * ✅ 이미 모든 관계가 로드된 Entity로 ResponseDto 생성 (쿼리 없음!)
+     * Repository에서 Fetch Join으로 로드한 Entity 사용
+     */
+    public ResGetHubTransferDto buildResponseDtoFromFetchedEntity(HubTransferEntity entity) {
+
+        // waypoints가 비어있으면 빈 list 반환
+        log.info("getWaypoints: {}", entity.getWaypoints());
+        if (entity.getWaypoints() == null || entity.getWaypoints().isEmpty()) {
+            return ResGetHubTransferDto.builder()
+                    .routeId(entity.getId())
+                    .startHubId(entity.getStartHubId())
+                    .endHubId(entity.getEndHubId())
+                    .distanceKm(entity.getDistance())
+                    .durationMinutes((int) (entity.getDurationSec() / 60))
+                    .durationSec(entity.getDurationSec())
+                    .waypoints(List.of())
+                    .build();
+        }
+
+        // 모든 데이터가 이미 로드됨
+        List<ResGetHubTransferDto.WaypointInfo> waypoints = entity.getWaypoints().stream()
+                .map(waypoint -> {
+                    // 관계로부터 직접 조회
+                    CentralHubEntity centralHub = waypoint.getCentralHub();
+                    log.info("waypoint by stream: {}", centralHub.getId());
+                    if (centralHub == null) {
+                        throw new HubTransferInvalidCentralHub("존재하지 않는 중앙 허브입니다.");
+                    }
+                    // 관계로부터 직접 조회
+                    HubEntity hub = centralHub.getHub();
+                    if (hub == null) {
+                        throw new HubTransferInvalidHub("존재하지 않는 허브입니다.");
+                    }
 
                     return ResGetHubTransferDto.WaypointInfo.builder()
                             .name(hub.getHubName())
@@ -235,6 +308,9 @@ public class HubTransferCreateService {
         }
     }
 
+    /**
+     * 경로 캐시 갱신 (두 가지 키로 모두 저장)
+     */
     public void cacheTransfer(UUID transferId, ResGetHubTransferDto responseDto) {
         try {
             HubTransferCacheData cacheData = HubTransferCacheData.fromResponseDto(responseDto);
@@ -250,6 +326,9 @@ public class HubTransferCreateService {
             log.warn("경로 캐시 갱신 실패 (계속 진행)", e);
         }
     }
+
+
+
 
 
 }

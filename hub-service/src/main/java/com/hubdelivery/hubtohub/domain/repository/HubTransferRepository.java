@@ -46,14 +46,66 @@ public interface HubTransferRepository extends JpaRepository<HubTransferEntity, 
      * 필터링된 경로 목록 조회 (페이지네이션)
      * - fromHubId, toHubId는 선택적 필터
      * - soft delete 제외
+     * n+1문제
      */
-    @Query("SELECT h FROM HubTransferEntity h " +
+//    @Query("SELECT h FROM HubTransferEntity h " +
+//            "WHERE h.deletedAt IS NULL " +
+//            "AND (:fromHubId IS NULL OR h.startHubId = :fromHubId) " +
+//            "AND (:toHubId IS NULL OR h.endHubId = :toHubId)")
+//    Page<HubTransferEntity> findByFilters(
+//            @Param("fromHubId") UUID fromHubId,
+//            @Param("toHubId") UUID toHubId,
+//            Pageable pageable
+//    );
+
+    @Query("SELECT DISTINCT h FROM HubTransferEntity h " +
+            "LEFT JOIN FETCH h.waypoints w " +
             "WHERE h.deletedAt IS NULL " +
             "AND (:fromHubId IS NULL OR h.startHubId = :fromHubId) " +
-            "AND (:toHubId IS NULL OR h.endHubId = :toHubId)")
+            "AND (:toHubId IS NULL OR h.endHubId = :toHubId) " +
+            "ORDER BY h.createdAt DESC")
     Page<HubTransferEntity> findByFilters(
             @Param("fromHubId") UUID fromHubId,
             @Param("toHubId") UUID toHubId,
             Pageable pageable
     );
+
+    /**
+     * 페이지네이션용 ID 조회
+     */
+    @Query("SELECT h.id FROM HubTransferEntity h " +
+            "WHERE h.deletedAt IS NULL " +
+            "AND (:fromHubId IS NULL OR h.startHubId = :fromHubId) " +
+            "AND (:toHubId IS NULL OR h.endHubId = :toHubId)")
+    Page<UUID> findIdsByFilters(
+            @Param("fromHubId") UUID fromHubId,
+            @Param("toHubId") UUID toHubId,
+            Pageable pageable
+    );
+
+    @Query("SELECT h FROM HubTransferEntity h " +
+            "LEFT JOIN FETCH h.waypoints w " +
+            "WHERE h.id IN :ids " +
+            "AND h.deletedAt IS NULL " +
+            "ORDER BY h.createdAt DESC")
+    List<HubTransferEntity> findByIdsFetchWaypoints(@Param("ids") List<UUID> ids);
+
+    @Query("SELECT h FROM HubTransferEntity h " +
+            "LEFT JOIN FETCH h.waypoints w " +
+            "LEFT JOIN FETCH w.centralHub cb " +
+            "LEFT JOIN FETCH cb.hub " +
+            "WHERE h.id IN :ids " +
+            "AND h.deletedAt IS NULL " +
+            "ORDER BY h.createdAt DESC")
+    List<HubTransferEntity> findByIdsFetchWaypointsWithAll(@Param("ids") List<UUID> ids);
+
+    @Query("SELECT h FROM HubTransferEntity h " +
+            "LEFT JOIN FETCH h.waypoints w " +
+            "LEFT JOIN FETCH w.centralHub cb " +
+            "LEFT JOIN FETCH cb.hub " +
+            "WHERE h.id = :id " +
+            "AND h.deletedAt IS NULL")
+    Optional<HubTransferEntity> findByIdFetchWaypoints(@Param("id") UUID id);
+
+
 }

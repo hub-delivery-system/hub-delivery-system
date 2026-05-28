@@ -17,10 +17,7 @@ import com.hubdelivery.hubtohub.domain.repository.HubTransferRepository;
 import com.hubdelivery.hubtohub.infrastructure.client.kakao.response.DirectionsResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
+import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -75,7 +72,6 @@ public class HubTransferService {
 
         // 3. 새로운 경로 생성 및 저장
         ResGetHubTransferDto responseDto = hubTransferCreateService.createAndSaveNewRoute(fromHub, toHub);
-        log.info("새 경로 생성 완료 - routeId: {}", responseDto.getRouteId());
 
         return responseDto;
     }
@@ -98,14 +94,10 @@ public class HubTransferService {
             UUID userId) {
 
         log.info("경로 목록 조회 - fromHubId: {}, toHubId: {}, page: {}, size: {}, userId: {}",
-                fromHubId, toHubId, page, size,userId.toString());
+                fromHubId, toHubId, page, size, userId.toString());
 
-
-        // 2. 페이지 요청 생성
-        // 1. PageableUtils로 기본 Pageable 생성 (validateSize 포함)
+        // 1. Pageable 생성
         Pageable basePageable = PageableUtils.createPageable(page, size);
-
-        // 2. Sort만 교체
         Sort sortObj = parseSort(sort);
         Pageable pageable = PageRequest.of(
                 basePageable.getPageNumber(),
@@ -113,18 +105,28 @@ public class HubTransferService {
                 sortObj
         );
 
-
-        // 3. 필터링된 데이터 조회
-        Page<HubTransferEntity> entityPage = hubTransferRepository.findByFilters(
+        // 2. 1번의 쿼리: ID만 페이지네이션으로 조회
+        Page<UUID> idPage = hubTransferRepository.findIdsByFilters(
                 fromHubId, toHubId, pageable
         );
 
-        // 4. DTO로 변환
-        Page<ResGetHubTransferDto> dtoPage = entityPage.map(
-                hubTransferCreateService::buildResponseDtoFromDb
+        // 3. 2번의 쿼리: 모든 관계를 함께 Fetch Join (waypoints + centralHub + hub)
+        List<HubTransferEntity> entities = hubTransferRepository.findByIdsFetchWaypointsWithAll(
+                idPage.getContent()
         );
 
-        // 5. PageResponse로 변환
+        //4.  DTO로 변환 (쿼리 없음! 이미 모든 데이터 로드됨)
+        List<ResGetHubTransferDto> dtoList = entities.stream()
+                .map(hubTransferCreateService::buildResponseDtoFromFetchedEntity)
+                .toList();
+
+        //5.  PageResponse로 변환
+        Page<ResGetHubTransferDto> dtoPage = new PageImpl<>(
+                dtoList,
+                pageable,
+                idPage.getTotalElements()
+        );
+
         return PageResponse.from(dtoPage);
     }
 
@@ -148,7 +150,7 @@ public class HubTransferService {
         log.info("경로 조회 시작 - transferId: {}, userId : {}", transferId,userId.toString());
 
         // 2. DB에서 조회
-        HubTransferEntity existingRoute = hubTransferRepository.findActiveRouteById(transferId)
+        HubTransferEntity existingRoute = hubTransferRepository.findByIdFetchWaypoints(transferId)
                 .orElseThrow(() -> {
                     log.warn("경로를 찾을 수 없음 - transferId: {}", transferId);
                     return new HubTransferNotFoundException();
@@ -163,12 +165,10 @@ public class HubTransferService {
             return cachedData.toResponseDto();
         }
 
-
-
         log.info("DB에서 경로 조회 성공 - routeId: {}", transferId);
 
         // 3. ResponseDto 생성
-        ResGetHubTransferDto responseDto = hubTransferCreateService.buildResponseDtoFromDb(existingRoute);
+        ResGetHubTransferDto responseDto = hubTransferCreateService.buildResponseDtoFromFetchedEntity(existingRoute);
 
         // 4. transferId로 캐시에 저장
         hubTransferCreateService.cacheRouteByTransferId(transferId, responseDto);
@@ -221,7 +221,7 @@ public class HubTransferService {
         log.debug("기존 경유지 삭제 완료");
 
         // 6. 새로운 경유지 저장
-        hubTransferCreateService.createAndSaveWaypoints(transferId, fromHub, toHub);
+        hubTransferCreateService.createAndSaveWaypoints(existingRoute, fromHub, toHub);
         log.debug("새 경유지 저장 완료");
 
         // 7. ResponseDto 생성
@@ -299,8 +299,6 @@ public class HubTransferService {
 
         return new HubPair(fromHub, toHub);
     }
-
-
 
 }
 

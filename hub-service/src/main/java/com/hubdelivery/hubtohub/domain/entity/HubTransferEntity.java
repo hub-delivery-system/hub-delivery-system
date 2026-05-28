@@ -62,7 +62,7 @@ public class HubTransferEntity extends BaseEntity {
             orphanRemoval = true,
             fetch = FetchType.LAZY
     )
-    @JoinColumn(name = "hub_to_hub_id")
+    @JoinColumn(name = "hubtohub_id")
     private List<HubTransferWaypointEntity> waypoints = new ArrayList<>();
 
     @Builder

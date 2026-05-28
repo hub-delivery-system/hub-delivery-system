@@ -27,6 +27,6 @@ public interface CentralHubRepository extends JpaRepository<CentralHubEntity, UU
 
     @Query("SELECT h " +
             "FROM CentralHubEntity h " +
-            "WHERE h.hubId = :id AND h.deletedAt IS NULL")
+            "WHERE h.hub.id = :id AND h.deletedAt IS NULL")
     Optional<CentralHubEntity> findByHubIdIsActive(UUID id);
 }

@@ -2,6 +2,7 @@ package com.hubdelivery.hubtohub.domain.entity;
 
 
 import com.hubdelivery.common.entity.BaseEntity;
+import com.hubdelivery.hub.domain.entity.HubEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -22,13 +23,14 @@ public class CentralHubEntity extends BaseEntity {
     private UUID id;
 
     /**
-     * Hub ID (기존 Hub 테이블 참조)
+     * Hub (기존 Hub 테이블 참조)
      */
-    @Column(name = "hub_id", nullable = false, unique = true)
-    private UUID hubId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "hub_id", insertable = false, updatable = false)
+    private HubEntity hub;
 
     @Builder
-    public CentralHubEntity(UUID hubId) {
-        this.hubId = hubId;
+    public CentralHubEntity(HubEntity hub) {
+        this.hub = hub;
     }
 }
