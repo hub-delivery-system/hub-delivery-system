@@ -1,0 +1,226 @@
+services:
+  # ------------------------------------------------------------------------
+  # LAYER 1: Core Infra Services (최하단 기반 인프라)
+  # ------------------------------------------------------------------------
+  postgres:
+    image: postgres:15-alpine
+    container_name: logistics-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./infra/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - logistics-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: logistics-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - logistics-network
+
+  zipkin:
+    image: openzipkin/zipkin:latest
+    container_name: logistics-zipkin
+    ports:
+      - "9411:9411"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9411 && echo -e 'GET /health HTTP/1.1\r\nHost: localhost\r\n\r\n' >&3 && close 3"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - logistics-network
+
+  # ------------------------------------------------------------------------
+  # LAYER 2: Security & IAM (Keycloak)
+  # ------------------------------------------------------------------------
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    container_name: logistics-keycloak
+    command: start-dev --health-enabled=true
+    ports:
+      - "8080:8080"
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres:5432/keycloak_db
+      KC_DB_USERNAME: ${POSTGRES_USER}
+      KC_DB_PASSWORD: ${POSTGRES_PASSWORD}
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080 && echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\n\r\n' >&3 && close 3"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - logistics-network
+
+  # ------------------------------------------------------------------------
+  # LAYER 3: Service Discovery (Eureka Server)
+  # ------------------------------------------------------------------------
+  eureka-server:
+    build:
+      context: ./eureka-server
+      dockerfile: Dockerfile
+    container_name: logistics-eureka
+    ports:
+      - "19090:19090"
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      zipkin:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:19090/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - logistics-network
+
+  # ------------------------------------------------------------------------
+  # LAYER 4: API Gateway
+  # ------------------------------------------------------------------------
+  gateway-service:
+    build:
+      context: ./gateway-service
+      dockerfile: Dockerfile
+    container_name: logistics-gateway
+    ports:
+      - "19010:19010"
+    environment:
+      EUREKA_SERVER_URL: ${EUREKA_SERVER_URL}
+      KEYCLOAK_JWK_SET_URI: ${KEYCLOAK_JWK_SET_URI}
+    restart: unless-stopped
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:19010/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - logistics-network
+
+  # ------------------------------------------------------------------------
+  # LAYER 5: Microservices (비즈니스 도메인 마이크로서비스들)
+  # ------------------------------------------------------------------------
+  user-service:
+    build: { context: ./user-service, dockerfile: Dockerfile }
+    container_name: logistics-user-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${USER_DB}
+      EUREKA_SERVER_URL: ${EUREKA_SERVER_URL}
+    restart: unless-stopped
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - logistics-network
+
+  hub-service:
+    build: { context: ./hub-service, dockerfile: Dockerfile }
+    container_name: logistics-hub-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${HUB_DB}
+      EUREKA_SERVER_URL: ${EUREKA_SERVER_URL}
+    restart: unless-stopped
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - logistics-network
+
+  company-product-service:
+    build: { context: ./company-product-service, dockerfile: Dockerfile }
+    container_name: logistics-company-product-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${COMPANY_PRODUCT_DB}
+      EUREKA_SERVER_URL: ${EUREKA_SERVER_URL}
+    restart: unless-stopped
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - logistics-network
+
+  order-service:
+    build: { context: ./order-service, dockerfile: Dockerfile }
+    container_name: logistics-order-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${ORDER_DELIVERY_DB}
+      EUREKA_SERVER_URL: ${EUREKA_SERVER_URL}
+    restart: unless-stopped
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - logistics-network
+
+  delivery-service:
+    build: { context: ./delivery-service, dockerfile: Dockerfile }
+    container_name: logistics-delivery-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${ORDER_DELIVERY_DB}
+      EUREKA_SERVER_URL: ${EUREKA_SERVER_URL}
+    restart: unless-stopped
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - logistics-network
+
+  slack-ai-service:
+    build: { context: ./slack-ai-service, dockerfile: Dockerfile }
+    container_name: logistics-slack-ai-service
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${SLACK_AI_DB}
+      EUREKA_SERVER_URL: ${EUREKA_SERVER_URL}
+      SLACK_BOT_TOKEN: ${SLACK_BOT_TOKEN}
+      AI_API_KEY: ${AI_API_KEY}
+    restart: unless-stopped
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - logistics-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  logistics-network:
+    driver: bridge
