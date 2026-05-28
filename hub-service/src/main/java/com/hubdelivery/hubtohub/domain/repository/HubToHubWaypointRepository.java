@@ -8,4 +8,9 @@ import java.util.UUID;
 
 public interface HubToHubWaypointRepository extends JpaRepository<HubTransferWaypointEntity, UUID> {
     List<HubTransferWaypointEntity> findByHubToHubIdOrderBySequence(UUID id);
+
+    void deleteByHubToHubId(UUID transferId);
+
+
+    List<HubTransferWaypointEntity> findByHubToHubIdAndDeletedAtIsNullOrderBySequence(UUID hubToHubId);
 }

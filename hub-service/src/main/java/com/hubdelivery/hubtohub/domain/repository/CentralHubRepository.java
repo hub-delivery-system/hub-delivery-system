@@ -2,6 +2,7 @@ package com.hubdelivery.hubtohub.domain.repository;
 
 import com.hubdelivery.hubtohub.domain.entity.CentralHubEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -23,4 +24,9 @@ public interface CentralHubRepository extends JpaRepository<CentralHubEntity, UU
      * 모든 중앙허브 조회
      */
     List<CentralHubEntity> findAll();
+
+    @Query("SELECT h " +
+            "FROM CentralHubEntity h " +
+            "WHERE h.hubId = :id AND h.deletedAt IS NULL")
+    Optional<CentralHubEntity> findByHubIdIsActive(UUID id);
 }
