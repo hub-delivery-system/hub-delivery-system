@@ -15,7 +15,7 @@ public record UserUpdateRequest(
         @Pattern(regexp = "^[a-z0-9]{4,10}$", message = "username 형식이 올바르지 않습니다.")
         String username,
 
-        @JsonProperty("requested_Role")
+        @JsonProperty("requested_role")
         RequestedRole requestedRole,
 
         UserRole role,

@@ -32,7 +32,7 @@ public class UserController {
 
     private final UserService userService;
 
-    @PatchMapping("/{userId}/approved")
+    @PatchMapping("/{userId}/approve")
     @PreAuthorize("hasAnyRole('MASTER', 'HUB_MANAGER')")
     public ApiResponse<UserApproveResponse> approve(
             @PathVariable UUID userId,
@@ -60,7 +60,7 @@ public class UserController {
     public ApiResponse<UserResponse> getUser(
             @PathVariable UUID userId
     ) {
-        return ApiResponse.ok(userService.getUser());
+        return ApiResponse.ok(userService.getUser(userId));
     }
 
     @PutMapping("/{userId}")
@@ -69,15 +69,16 @@ public class UserController {
             @PathVariable UUID userId,
             @Valid @RequestBody UserUpdateRequest request
     ) {
-        return ApiResponse.ok(userService.updateUser(userId, request);
+        return ApiResponse.ok(userService.updateUser(userId, request));
     }
 
     @DeleteMapping("/{userId}")
     @PreAuthorize("hasRole('MASTER')")
-    public ApiResponse<UserResponse> deleteUser(
+    public ApiResponse<Void> deleteUser(
             @PathVariable UUID userId
 
     ) {
+        userService.deleteUser(userId);
         return ApiResponse.ok(null);
     }
 

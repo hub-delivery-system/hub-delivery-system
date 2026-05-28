@@ -31,20 +31,26 @@ public class UserService {
 
     @Transactional
     public UserApproveResponse approve(UUID userId, UserApproveRequest request) {
-
         User user = findActiveUser(userId);
 
         if (user.getStatus() != UserStatus.PENDING) {
             throw new CommonException(CommonErrorCode.INVALID_INPUT_VALUE, "PENDING 상태 사용자만 승인할 수 있습니다.");
         }
 
-        validateRoleForRequestedRole(user.getRequestedRole(), request.role());
-        validateOrgByRole(request.role(), user.getRequestedRole(), request.hubId(), request.companyId());
+        RequestedRole requestedRole = user.getRequestedRole();
+        if (requestedRole == null) {
+            throw new CommonException(CommonErrorCode.INVALID_INPUT_VALUE, "요청 역할 정보가 없습니다.");
+        }
 
-        user.approve(request.role(), user.getHubId(), user.getCompanyId());
+        UserRole mappedRole = requestedRole.toUserRole();
+        UUID hubId = request.hubId();
+        UUID companyId = request.companyId();
 
+        validateOrgByRole(mappedRole, requestedRole, hubId, companyId);
+        user.approve(mappedRole, hubId, companyId);
+
+        // TODO: affiliationName + requestedRole 기반으로 hubId/companyId 자동 조회 연동
         // TODO: 승인 시 Keycloak 사용자 생성/활성화 + role 부여
-        // keycloakAdminClient.provisionAndGrantRole(user, request.role());
 
         return new UserApproveResponse(
                 user.getId(),
@@ -53,38 +59,20 @@ public class UserService {
                 user.getHubId(),
                 user.getCompanyId()
         );
-
-    }
-
-    // 변환된 Role(RequestedRole -> UserRole)과 저장된 Role을 비교하여 올바르게 변환되었는지 확인 (+ Role이 MASTER인 사용자의 경우에는 승인 자체는 할 수 없도록(이미 승인된 사용자이므로))
-    private void validateRoleForRequestedRole(RequestedRole requestedRole, UserRole role) {
-        if (requestedRole == null) {
-            throw new CommonException(CommonErrorCode.INVALID_INPUT_VALUE, "요청 역할 정보가 없습니다.");
-        }
-        if (role == UserRole.MASTER) {
-            throw new CommonException(CommonErrorCode.INVALID_INPUT_VALUE, "MASTER는 승인 API로 부여할 수 없습니다.");
-        }
-        if (requestedRole.toUserRole() != role) {
-            throw new CommonException(CommonErrorCode.INVALID_INPUT_VALUE, "요청 역할과 승인 역할이 일치하지 않습니다.");
-        }
     }
 
     public List<UserResponse> getUsers() {
-
         return userRepository.findAll().stream()
                 .map(this::toResponse)
                 .toList();
     }
 
     public UserResponse getUser(UUID userId) {
-
         return toResponse(findActiveUser(userId));
-
     }
 
     @Transactional
     public UserRejectResponse reject(UUID userId) {
-
         User user = findActiveUser(userId);
 
         if (user.getStatus() != UserStatus.PENDING) {
@@ -97,11 +85,10 @@ public class UserService {
 
     @Transactional
     public UserResponse updateUser(UUID userId, UserUpdateRequest request) {
-
         User user = findActiveUser(userId);
 
         String nextUsername = StringUtils.hasText(request.username()) ? request.username() : user.getUsername();
-        RequestedRole nextRequestedRole = request.requestedRole() != request.requestedRole() : user.requestedRole();
+        RequestedRole nextRequestedRole = request.requestedRole() != null ? request.requestedRole() : user.getRequestedRole();
         UserRole nextRole = request.role() != null ? request.role() : user.getRole();
         String nextAffiliationName = StringUtils.hasText(request.affiliationName()) ? request.affiliationName() : user.getAffiliationName();
         UUID nextHubId = request.hubId() != null ? request.hubId() : user.getHubId();
@@ -124,10 +111,8 @@ public class UserService {
 
     @Transactional
     public void deleteUser(UUID userId) {
-
         User user = findActiveUser(userId);
-        user.softDelete("MASTER"); // TODO: 실제 로그인 사용자로 변경
-
+        user.softDelete("MASTER"); // TODO: 실제 로그인 사용자 식별자로 변경
     }
 
     private User findActiveUser(UUID userId) {
@@ -135,7 +120,7 @@ public class UserService {
                 .orElseThrow(() -> new CommonException(CommonErrorCode.RESOURCE_NOT_FOUND, "존재하지 않는 사용자입니다."));
     }
 
-    private UserResponse toReponse(User user) {
+    private UserResponse toResponse(User user) {
         return new UserResponse(
                 user.getId(),
                 user.getUsername(),
@@ -206,6 +191,4 @@ public class UserService {
             }
         }
     }
-
-
 }
