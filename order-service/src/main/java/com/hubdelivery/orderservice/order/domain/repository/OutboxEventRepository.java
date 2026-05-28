@@ -9,4 +9,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface OutboxEventRepository extends JpaRepository<OutboxEvent, UUID> {
 
     List<OutboxEvent> findByStatus(OutboxEventStatus status);
+
+    List<OutboxEvent> findByStatusIn(List<OutboxEventStatus> statuses);
 }

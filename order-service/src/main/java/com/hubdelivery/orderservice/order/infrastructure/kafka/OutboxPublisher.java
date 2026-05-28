@@ -21,11 +21,12 @@ public class OutboxPublisher {
     private final OutboxEventRepository outboxEventRepository;
     private final KafkaTemplate<String, String> kafkaTemplate;
 
-    // 5초마다 PENDING 이벤트를 Kafka에 발행한다
+    // 5초마다 PENDING·FAILED 이벤트를 Kafka에 발행한다 (FAILED는 재시도)
     @Scheduled(fixedDelay = 5000)
     @Transactional
     public void publishPendingEvents() {
-        List<OutboxEvent> pending = outboxEventRepository.findByStatus(OutboxEventStatus.PENDING);
+        List<OutboxEvent> pending = outboxEventRepository.findByStatusIn(
+                List.of(OutboxEventStatus.PENDING, OutboxEventStatus.FAILED));
         for (OutboxEvent event : pending) {
             try {
                 kafkaTemplate.send(TOPIC_ORDER_CREATED, event.getAggregateId().toString(), event.getPayload()).get();
