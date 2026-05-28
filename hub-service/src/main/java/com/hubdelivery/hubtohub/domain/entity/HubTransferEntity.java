@@ -16,13 +16,7 @@ import java.util.List;
  */
 @Entity
 @Table(
-        name = "p_hubTohub",
-        uniqueConstraints = {
-                @UniqueConstraint(
-                        name = "uk_start_end_hub",
-                        columnNames = {"start_hub", "end_hub"}
-                )
-        }
+        name = "p_hub_to_hub"
 )
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Getter
@@ -103,5 +97,10 @@ public class HubTransferEntity extends BaseEntity {
      */
     public void clearWaypoints() {
         waypoints.clear();
+    }
+
+    public void updateRoute(BigDecimal distance, long durationSec) {
+        this.distance = distance;
+        this.durationSec = durationSec;
     }
 }
