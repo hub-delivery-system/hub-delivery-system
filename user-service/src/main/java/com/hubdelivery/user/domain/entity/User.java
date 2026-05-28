@@ -18,9 +18,9 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import com.hubdelivery.auth.domain.type.RequestedRole;
 import com.hubdelivery.common.entity.BaseEntity;
 import com.hubdelivery.common.security.UserRole;
-import com.hubdelivery.user.domain.type.AffiliationType;
 import com.hubdelivery.user.domain.type.UserStatus;
 
 @Entity
@@ -38,7 +38,7 @@ public class User extends BaseEntity {
     @Column(nullable = false, length = 10)
     private String username;
 
-    @Column(name = "slack_id", nullable = false, length = 20)
+    @Column(name = "slack_id", nullable = false, length = 20, unique = true)
     private String slackId;
 
     @Column(nullable = false, length = 255)
@@ -47,13 +47,13 @@ public class User extends BaseEntity {
     @Enumerated(EnumType.STRING)
     private UserRole role;
 
+    @Column(name = "requested_role")
+    @Enumerated(EnumType.STRING)
+    private RequestedRole requestedRole;
+
     @Column(nullable = false, length = 10, columnDefinition = "varchar(10) default 'PENDING'")
     @Enumerated(EnumType.STRING)
     private UserStatus status;
-
-    @Column(name = "affiliation_type")
-    @Enumerated(EnumType.STRING)
-    private AffiliationType affiliationType;
 
     @Column(name = "affiliation_name", length = 100)
     private String affiliationName;
@@ -75,13 +75,13 @@ public class User extends BaseEntity {
             String username,
             String slackId,
             String password,
-            AffiliationType affiliationType,
+            RequestedRole requestedRole,
             String affiliationName
     ) {
         this.username = username;
         this.slackId = slackId;
         this.password = password;
-        this.affiliationType = affiliationType;
+        this.requestedRole = requestedRole;
         this.affiliationName = affiliationName;
     }
 
@@ -89,16 +89,24 @@ public class User extends BaseEntity {
             String username,
             String slackId,
             String password,
-            AffiliationType affiliationType,
-            String affiliationName
+            RequestedRole requestedRole,
+            String affiliationName,
+            UserRole role
     ) {
-        User user = new User(username, slackId, password, affiliationType, affiliationName);
+        User user = new User(username, slackId, password, requestedRole, affiliationName);
         user.status = UserStatus.PENDING;
-        user.role = null;
+        user.role = role;
         user.hubId = null;
         user.companyId = null;
 
         return user;
+    }
+
+    public void approve(UserRole role, UUID hubId, UUID companyId) {
+        this.role = role;
+        this.status = UserStatus.APPROVED;
+        this.hubId = hubId;
+        this.companyId = companyId;
     }
 
 }

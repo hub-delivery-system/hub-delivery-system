@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.hubdelivery.user.domain.type.AffiliationType;
+import com.hubdelivery.auth.domain.type.RequestedRole;
 
 public record SignupRequest (
 
@@ -31,13 +31,11 @@ public record SignupRequest (
     )
     String username,
 
-    @NotNull(message = "타입은 필수입니다.")
-    @JsonProperty("affiliation_type")
-    AffiliationType affiliationType,
-
     @NotBlank(message = "허브 이름 또는 업체 이름은 필수입니다.")
     @Size(max = 100)
-    @JsonProperty("affiliation_name")
-    String affiliationName
+    String affiliationName,
+
+    @NotNull(message = "요청 역할은 필수입니다.")
+    RequestedRole requestedRole
 
 ) {}
