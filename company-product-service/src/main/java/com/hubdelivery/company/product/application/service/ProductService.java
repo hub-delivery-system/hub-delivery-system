@@ -12,6 +12,7 @@ import com.hubdelivery.company.product.domain.exception.ProductHubNotFoundExcept
 import com.hubdelivery.company.product.domain.exception.ProductNotFoundException;
 import com.hubdelivery.company.product.domain.repository.ProductRepository;
 import com.hubdelivery.company.product.presentation.dto.request.ProductCreateRequestDto;
+import com.hubdelivery.company.product.presentation.dto.request.ProductStockUpdateRequestDto;
 import com.hubdelivery.company.product.presentation.dto.request.ProductUpdateRequestDto;
 import com.hubdelivery.company.product.presentation.dto.response.ProductResponseDto;
 import feign.FeignException;
@@ -83,6 +84,30 @@ public class ProductService {
 
         // TODO: user-service 연동 후 userId 대신 username 으로 기록
         product.softDelete(userId.toString());
+    }
+
+    /** 상품 재고 감소 로직 */
+    @Transactional
+    public ProductResponseDto decreaseStock(UUID userId, UserRole userRole, UUID productId, ProductStockUpdateRequestDto request) {
+        // TODO: userId/userRole 기반 scope 권한 검증
+        Product product = productRepository.findLockedByIdAndDeletedAtIsNull(productId)
+                .orElseThrow(ProductNotFoundException::new);
+
+        product.decreaseStock(request.quantity());
+
+        return ProductResponseDto.from(product);
+    }
+
+    /** 상품 재고 증가 로직 */
+    @Transactional
+    public ProductResponseDto increaseStock(UUID userId, UserRole userRole, UUID productId, ProductStockUpdateRequestDto request) {
+        // TODO: userId/userRole 기반 scope 권한 검증
+        Product product = productRepository.findLockedByIdAndDeletedAtIsNull(productId)
+                .orElseThrow(ProductNotFoundException::new);
+
+        product.increaseStock(request.quantity());
+
+        return ProductResponseDto.from(product);
     }
 
     private void validateCompanyExists(UUID companyId) {
