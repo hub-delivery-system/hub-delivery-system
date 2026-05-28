@@ -124,16 +124,16 @@ public class HubRouteService {
 
         log.info("Hub & Spoke 경유지 구성 - 출발지 중앙허브: [{}], 도착지 중앙허브: [{}]", fromName, toName);
 
+        // 출발지와 도착지가 같은 중앙허브 소속
+        if (from.getId().equals(to.getId())) {
+            log.info("동일 권역 내 이동: 경유지 없음 [{}]", fromName);
+            return List.of();  // 경유지 없음
+        }
+
+        // 서로 다른 중앙허브
         Coordinate fromCoord = new Coordinate(from.getLatitude(), from.getLongitude());
         Coordinate toCoord = new Coordinate(to.getLatitude(), to.getLongitude());
 
-        if (from.getId().equals(to.getId())) {
-            // 같은 중앙허브 소속이면 해당 중앙허브 한 번만 경유
-            log.info("동일 권역 내 이동: 경유지 1개 [{}]", fromName);
-            return List.of(fromCoord);
-        }
-
-        // 다른 중앙허브: 출발 중앙허브 → 도착 중앙허브
         log.info("타 권역 간 이동: 경유지 2개 [{} → {}]", fromName, toName);
         return List.of(fromCoord, toCoord);
     }

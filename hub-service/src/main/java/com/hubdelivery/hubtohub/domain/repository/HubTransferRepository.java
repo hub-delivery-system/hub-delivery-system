@@ -1,6 +1,8 @@
 package com.hubdelivery.hubtohub.domain.repository;
 
 import com.hubdelivery.hubtohub.domain.entity.HubTransferEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -32,4 +34,19 @@ public interface HubTransferRepository extends JpaRepository<HubTransferEntity, 
     Optional<HubTransferEntity> findByStartHubIdAndEndHubId(UUID startHubId, UUID endHubId);
 
     boolean existsByStartHubIdAndEndHubIdAndDeletedAtIsNull(UUID fromHubId, UUID toHubId);
+
+    /**
+     * 필터링된 경로 목록 조회 (페이지네이션)
+     * - fromHubId, toHubId는 선택적 필터
+     * - soft delete 제외
+     */
+    @Query("SELECT h FROM HubTransferEntity h " +
+            "WHERE h.deletedAt IS NULL " +
+            "AND (:fromHubId IS NULL OR h.startHubId = :fromHubId) " +
+            "AND (:toHubId IS NULL OR h.endHubId = :toHubId)")
+    Page<HubTransferEntity> findByFilters(
+            @Param("fromHubId") UUID fromHubId,
+            @Param("toHubId") UUID toHubId,
+            Pageable pageable
+    );
 }
