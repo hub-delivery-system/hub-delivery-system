@@ -14,6 +14,8 @@ public enum ProductErrorCode implements ErrorCode {
     RELATED_HUB_NOT_FOUND(HttpStatus.NOT_FOUND, "PRODUCT-003", "상품 관리 허브를 찾을 수 없습니다."),
     PRODUCT_STOCK_NOT_ENOUGH(HttpStatus.CONFLICT, "PRODUCT-004", "상품 재고가 부족합니다."),
 
+    PRODUCT_ACCESS_DENIED(HttpStatus.FORBIDDEN, "PRODUCT-101", "해당 상품에 접근할 권한이 없습니다."),
+
     RELATED_HUB_INTEGRATION_FAILED(HttpStatus.SERVICE_UNAVAILABLE, "PRODUCT-901", "허브 서비스 연동에 실패했습니다."),
     RELATED_USER_INTEGRATION_FAILED(HttpStatus.SERVICE_UNAVAILABLE, "PRODUCT-902", "사용자 서비스 연동에 실패했습니다."),
     ;

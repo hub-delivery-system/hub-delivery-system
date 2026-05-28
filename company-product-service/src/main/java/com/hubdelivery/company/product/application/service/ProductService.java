@@ -4,12 +4,10 @@ import com.hubdelivery.common.response.PageResponse;
 import com.hubdelivery.common.security.UserRole;
 import com.hubdelivery.company.company.domain.repository.CompanyRepository;
 import com.hubdelivery.company.global.infrastructure.client.HubClient;
+import com.hubdelivery.company.global.infrastructure.client.dto.UserResponse;
 import com.hubdelivery.company.global.util.SearchPageableUtils;
 import com.hubdelivery.company.product.domain.entity.Product;
-import com.hubdelivery.company.product.domain.exception.ProductCompanyNotFoundException;
-import com.hubdelivery.company.product.domain.exception.ProductHubIntegrationException;
-import com.hubdelivery.company.product.domain.exception.ProductHubNotFoundException;
-import com.hubdelivery.company.product.domain.exception.ProductNotFoundException;
+import com.hubdelivery.company.product.domain.exception.*;
 import com.hubdelivery.company.product.domain.repository.ProductRepository;
 import com.hubdelivery.company.product.presentation.dto.request.ProductCreateRequestDto;
 import com.hubdelivery.company.product.presentation.dto.request.ProductStockUpdateRequestDto;
@@ -37,7 +35,9 @@ public class ProductService {
     /** 상품 생성 로직 */
     @Transactional
     public ProductResponseDto createProduct(UUID userId, UserRole userRole, ProductCreateRequestDto request) {
-        // TODO: userId/userRole 기반 scope 권한 검증
+        // TODO: user-service 의 GET /api/v1/users/{user_id} 구현 완료 후 재활성화
+        // UserResponse user = userAuthorizationValidator.validateCurrentUser(userId, userRole);
+        // validateProductCreateAuthority(user, request.hubId(), request.companyId());
         validateHubExists(userId, userRole, request.hubId());
         validateCompanyExists(request.companyId());
 
@@ -63,10 +63,13 @@ public class ProductService {
     /** 상품 수정 로직 */
     @Transactional
     public ProductResponseDto updateProduct(UUID userId, UserRole userRole, UUID productId, ProductUpdateRequestDto request) {
-        // TODO: userId/userRole 기반 scope 권한 검증
+        // TODO: user-service 의 GET /api/v1/users/{user_id} 구현 완료 후 재활성화
+        // UserResponse user = userAuthorizationValidator.validateCurrentUser(userId, userRole);
         Product product = productRepository.findByIdAndDeletedAtIsNull(productId)
                 .orElseThrow(ProductNotFoundException::new);
 
+        // TODO: user-service 의 GET /api/v1/users/{user_id} 구현 완료 후 재활성화
+        // validateProductUpdateAuthority(user, product, request.hubId(), request.companyId());
         validateHubExists(userId, userRole, request.hubId());
         validateCompanyExists(request.companyId());
 
@@ -78,9 +81,13 @@ public class ProductService {
     /** 상품 삭제 로직 */
     @Transactional
     public void deleteProduct(UUID userId, UserRole userRole, UUID productId) {
-        // TODO: userId/userRole 기반 scope 권한 검증
+        // TODO: user-service 의 GET /api/v1/users/{user_id} 구현 완료 후 재활성화
+        // UserResponse user = userAuthorizationValidator.validateCurrentUser(userId, userRole);
         Product product = productRepository.findByIdAndDeletedAtIsNull(productId)
                 .orElseThrow(ProductNotFoundException::new);
+
+        // TODO: user-service 의 GET /api/v1/users/{user_id} 구현 완료 후 재활성화
+        // validateProductDeleteAuthority(user, product);
 
         // TODO: user-service 연동 후 userId 대신 username 으로 기록
         product.softDelete(userId.toString());
@@ -89,10 +96,13 @@ public class ProductService {
     /** 상품 재고 감소 로직 */
     @Transactional
     public ProductResponseDto decreaseStock(UUID userId, UserRole userRole, UUID productId, ProductStockUpdateRequestDto request) {
-        // TODO: userId/userRole 기반 scope 권한 검증
+        // TODO: user-service 의 GET /api/v1/users/{user_id} 구현 완료 후 재활성화
+        // UserResponse user = userAuthorizationValidator.validateCurrentUser(userId, userRole);
         Product product = productRepository.findLockedByIdAndDeletedAtIsNull(productId)
                 .orElseThrow(ProductNotFoundException::new);
 
+        // TODO: user-service 의 GET /api/v1/users/{user_id} 구현 완료 후 재활성화
+        // validateProductStockAuthority(user, product);
         product.decreaseStock(request.quantity());
 
         return ProductResponseDto.from(product);
@@ -101,10 +111,13 @@ public class ProductService {
     /** 상품 재고 증가 로직 */
     @Transactional
     public ProductResponseDto increaseStock(UUID userId, UserRole userRole, UUID productId, ProductStockUpdateRequestDto request) {
-        // TODO: userId/userRole 기반 scope 권한 검증
+        // TODO: user-service 의 GET /api/v1/users/{user_id} 구현 완료 후 재활성화
+        // UserResponse user = userAuthorizationValidator.validateCurrentUser(userId, userRole);
         Product product = productRepository.findLockedByIdAndDeletedAtIsNull(productId)
                 .orElseThrow(ProductNotFoundException::new);
 
+        // TODO: user-service 의 GET /api/v1/users/{user_id} 구현 완료 후 재활성화
+        // validateProductStockAuthority(user, product);
         product.increaseStock(request.quantity());
 
         return ProductResponseDto.from(product);
@@ -114,6 +127,70 @@ public class ProductService {
         if (companyRepository.findByIdAndDeletedAtIsNull(companyId).isEmpty()) {
             throw new ProductCompanyNotFoundException();
         }
+    }
+
+    private void validateProductCreateAuthority(UserResponse user, UUID requestHubId, UUID requestCompanyId) {
+        if (user.role() == UserRole.MASTER) {
+            return;
+        }
+
+        if (user.role() == UserRole.HUB_MANAGER && requestHubId.equals(user.hubId())) {
+            return;
+        }
+
+        if (user.role() == UserRole.COMPANY_MANAGER && requestCompanyId.equals(user.companyId())) {
+            return;
+        }
+
+        throw new ProductAccessDeniedException();
+    }
+
+    private void validateProductUpdateAuthority(UserResponse user, Product product, UUID requestHubId, UUID requestCompanyId) {
+        if (user.role() == UserRole.MASTER) {
+            return;
+        }
+
+        if (user.role() == UserRole.HUB_MANAGER
+                && product.getHubId().equals(user.hubId())
+                && requestHubId.equals(user.hubId())) {
+            return;
+        }
+
+        if (user.role() == UserRole.COMPANY_MANAGER
+                && product.getCompanyId().equals(user.companyId())
+                && requestCompanyId.equals(user.companyId())) {
+            return;
+        }
+
+        throw new ProductAccessDeniedException();
+    }
+
+    private void validateProductDeleteAuthority(UserResponse user, Product product) {
+        if (user.role() == UserRole.MASTER) {
+            return;
+        }
+
+        if (user.role() == UserRole.HUB_MANAGER && product.getHubId().equals(user.hubId())) {
+            return;
+        }
+
+        throw new ProductAccessDeniedException();
+    }
+
+    private void validateProductStockAuthority(UserResponse user, Product product) {
+        if (user.role() == UserRole.MASTER) {
+            return;
+        }
+
+        if (user.role() == UserRole.HUB_MANAGER && product.getHubId().equals(user.hubId())) {
+            return;
+        }
+
+        if (user.role() == UserRole.COMPANY_MANAGER && product.getCompanyId().equals(user.companyId())) {
+            return;
+        }
+
+        throw new ProductAccessDeniedException();
     }
 
     private void validateHubExists(UUID userId, UserRole userRole, UUID hubId) {
