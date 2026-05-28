@@ -148,7 +148,7 @@ public class HubTransferService {
         log.info("경로 조회 시작 - transferId: {}, userId : {}", transferId,userId.toString());
 
         // 2. DB에서 조회
-        HubTransferEntity existingRoute = hubTransferRepository.findById(transferId)
+        HubTransferEntity existingRoute = hubTransferRepository.findActiveRouteById(transferId)
                 .orElseThrow(() -> {
                     log.warn("경로를 찾을 수 없음 - transferId: {}", transferId);
                     return new HubTransferNotFoundException();

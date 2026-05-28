@@ -26,6 +26,13 @@ public interface HubTransferRepository extends JpaRepository<HubTransferEntity, 
 
     @Query("""
            SELECT r FROM HubTransferEntity r
+           WHERE r.id = :id
+           AND r.deletedAt IS NULL
+           """)
+    Optional<HubTransferEntity> findActiveRouteById(UUID id);
+
+    @Query("""
+           SELECT r FROM HubTransferEntity r
            WHERE (r.startHubId = :hubId OR r.endHubId = :hubId)
            AND r.deletedAt IS NULL
            """)
