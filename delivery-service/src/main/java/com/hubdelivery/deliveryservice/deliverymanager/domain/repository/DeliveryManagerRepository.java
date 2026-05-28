@@ -13,7 +13,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface DeliveryManagerRepository extends JpaRepository<DeliveryManager, UUID> {
+public interface DeliveryManagerRepository extends JpaRepository<DeliveryManager, UUID>, DeliveryManagerRepositoryCustom {
 
     // 신규 담당자 순번 = 허브+타입 기준 현재 최대 순번 + 1. 담당자 없으면 0 반환 → 첫 순번은 1
     @Query("SELECT COALESCE(MAX(dm.sequence), 0) FROM DeliveryManager dm " +

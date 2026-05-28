@@ -9,6 +9,7 @@ import com.hubdelivery.deliveryservice.deliveryroute.domain.exception.DeliveryRo
 import com.hubdelivery.deliveryservice.deliveryroute.domain.exception.DeliveryRouteException;
 import com.hubdelivery.deliveryservice.deliveryroute.domain.repository.DeliveryRouteRepository;
 import com.hubdelivery.deliveryservice.deliveryroute.presentation.dto.DeliveryRouteResponse;
+import com.hubdelivery.deliveryservice.deliveryroute.presentation.dto.DeliveryRouteSearchCondition;
 import com.hubdelivery.deliveryservice.deliveryroute.presentation.dto.DeliveryRouteUpdateRequest;
 import com.hubdelivery.deliveryservice.deliverymanager.infrastructure.client.UserServiceClient;
 import java.util.UUID;
@@ -26,28 +27,24 @@ public class DeliveryRouteService {
     private final UserServiceClient userServiceClient;
 
     @Transactional(readOnly = true)
-    public PageResponse<DeliveryRouteResponse> getByDeliveryId(UUID deliveryId, int page, int size,
-                                                                String userId, UserRole role) {
+    public PageResponse<DeliveryRouteResponse> getByDeliveryId(
+            UUID deliveryId, int page, int size,
+            DeliveryRouteSearchCondition cond,
+            String userId, UserRole role) {
         validateDeliveryExists(deliveryId);
         Pageable pageable = PageableUtils.createPageable(page, size);
 
+        UUID fixedHubId = null;
+        UUID fixedManagerId = null;
+
         if (role == UserRole.HUB_MANAGER) {
-            UUID hubId = userServiceClient.getUser(UUID.fromString(userId)).data().getHubId();
-            return PageResponse.from(
-                    deliveryRouteRepository.findAllByDeliveryIdAndHubIdAndDeletedAtIsNull(deliveryId, hubId, pageable)
-                            .map(DeliveryRouteResponse::from));
+            fixedHubId = userServiceClient.getUser(UUID.fromString(userId)).data().getHubId();
+        } else if (role == UserRole.DELIVERY_MANAGER) {
+            fixedManagerId = UUID.fromString(userId);
         }
 
-        if (role == UserRole.DELIVERY_MANAGER) {
-            return PageResponse.from(
-                    deliveryRouteRepository.findAllByDeliveryIdAndDeliveryManagerIdAndDeletedAtIsNull(
-                            deliveryId, UUID.fromString(userId), pageable)
-                            .map(DeliveryRouteResponse::from));
-        }
-
-        // MASTER, COMPANY_MANAGER: 해당 배송의 모든 경로 조회
         return PageResponse.from(
-                deliveryRouteRepository.findAllByDeliveryIdAndDeletedAtIsNull(deliveryId, pageable)
+                deliveryRouteRepository.searchRoutes(deliveryId, cond, fixedHubId, fixedManagerId, pageable)
                         .map(DeliveryRouteResponse::from));
     }
 

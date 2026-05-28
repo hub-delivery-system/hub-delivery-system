@@ -12,6 +12,7 @@ import com.hubdelivery.deliveryservice.deliverymanager.infrastructure.client.Hub
 import com.hubdelivery.deliveryservice.deliverymanager.infrastructure.client.UserServiceClient;
 import com.hubdelivery.deliveryservice.deliverymanager.presentation.dto.DeliveryManagerCreateRequest;
 import com.hubdelivery.deliveryservice.deliverymanager.presentation.dto.DeliveryManagerResponse;
+import com.hubdelivery.deliveryservice.deliverymanager.presentation.dto.DeliveryManagerSearchCondition;
 import com.hubdelivery.deliveryservice.deliverymanager.presentation.dto.DeliveryManagerUpdateRequest;
 import feign.FeignException;
 import java.util.UUID;
@@ -58,21 +59,21 @@ public class DeliveryManagerService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<DeliveryManagerResponse> getAll(int page, int size, String userId, UserRole role) {
+    public PageResponse<DeliveryManagerResponse> getAll(
+            int page, int size,
+            DeliveryManagerSearchCondition cond,
+            String userId, UserRole role) {
         checkWritePermission(role, userId, null);
         Pageable pageable = PageableUtils.createPageable(page, size);
 
-        // HUB_MANAGER는 담당 허브 소속 담당자만 조회
+        // HUB_MANAGER는 담당 허브 소속 담당자만 조회 (fixedHubId 강제 적용)
+        UUID fixedHubId = null;
         if (role == UserRole.HUB_MANAGER) {
-            UUID hubId = userServiceClient.getUser(UUID.fromString(userId)).data().getHubId();
-            return PageResponse.from(
-                    deliveryManagerRepository.findAllByHubIdAndDeletedAtIsNull(hubId, pageable)
-                            .map(DeliveryManagerResponse::from)
-            );
+            fixedHubId = userServiceClient.getUser(UUID.fromString(userId)).data().getHubId();
         }
 
         return PageResponse.from(
-                deliveryManagerRepository.findAllByDeletedAtIsNull(pageable)
+                deliveryManagerRepository.searchManagers(cond, fixedHubId, pageable)
                         .map(DeliveryManagerResponse::from)
         );
     }

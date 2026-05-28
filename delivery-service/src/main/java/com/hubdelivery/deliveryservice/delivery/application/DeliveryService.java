@@ -11,6 +11,7 @@ import com.hubdelivery.deliveryservice.delivery.domain.type.DeliveryStatus;
 import com.hubdelivery.deliveryservice.delivery.presentation.dto.DeliveryCreateRequest;
 import com.hubdelivery.deliveryservice.delivery.presentation.dto.DeliveryCreateRequest.RouteRequest;
 import com.hubdelivery.deliveryservice.delivery.presentation.dto.DeliveryResponse;
+import com.hubdelivery.deliveryservice.delivery.presentation.dto.DeliverySearchCondition;
 import com.hubdelivery.deliveryservice.delivery.presentation.dto.DeliveryUpdateRequest;
 import com.hubdelivery.deliveryservice.deliverymanager.application.DeliveryManagerService;
 import com.hubdelivery.deliveryservice.deliverymanager.domain.type.DeliveryManagerType;
@@ -71,26 +72,23 @@ public class DeliveryService {
     }
 
     @Transactional(readOnly = true)
-    public PageResponse<DeliveryResponse> getAll(int page, int size, String userId, UserRole role) {
+    public PageResponse<DeliveryResponse> getAll(
+            int page, int size,
+            DeliverySearchCondition cond,
+            String userId, UserRole role) {
         Pageable pageable = PageableUtils.createPageable(page, size);
 
+        UUID fixedHubId = null;
+        UUID fixedManagerId = null;
+
         if (role == UserRole.HUB_MANAGER) {
-            UUID hubId = userServiceClient.getUser(UUID.fromString(userId)).data().getHubId();
-            return PageResponse.from(
-                    deliveryRepository.findAllByHubIdAndDeletedAtIsNull(hubId, pageable)
-                            .map(DeliveryResponse::from));
+            fixedHubId = userServiceClient.getUser(UUID.fromString(userId)).data().getHubId();
+        } else if (role == UserRole.DELIVERY_MANAGER) {
+            fixedManagerId = UUID.fromString(userId);
         }
 
-        if (role == UserRole.DELIVERY_MANAGER) {
-            return PageResponse.from(
-                    deliveryRepository.findAllByDeliveryManagerIdAndDeletedAtIsNull(
-                            UUID.fromString(userId), pageable)
-                            .map(DeliveryResponse::from));
-        }
-
-        // MASTER, COMPANY_MANAGER: 전체 조회
         return PageResponse.from(
-                deliveryRepository.findAllByDeletedAtIsNull(pageable)
+                deliveryRepository.searchDeliveries(cond, fixedHubId, fixedManagerId, pageable)
                         .map(DeliveryResponse::from));
     }
 
