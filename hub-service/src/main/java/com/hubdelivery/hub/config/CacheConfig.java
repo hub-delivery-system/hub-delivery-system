@@ -1,4 +1,4 @@
-package com.hubdelivery.global.config;
+package com.hubdelivery.hub.config;
 
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Bean;
