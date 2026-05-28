@@ -4,6 +4,6 @@ import com.hubdelivery.common.exception.BaseException;
 
 public class HubTransferNotFoundException extends BaseException {
     public HubTransferNotFoundException() {
-        super(HubToHubErrorCode.HUBTOHUB_NOT_FOUND);
+        super(HubToHubErrorCode.HUBTRANSFER_NOT_FOUND);
     }
 }
