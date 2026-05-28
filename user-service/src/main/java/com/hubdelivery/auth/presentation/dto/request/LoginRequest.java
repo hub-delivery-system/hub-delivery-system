@@ -8,12 +8,12 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public record LoginRequest (
 
-    @NotBlank(message = "슬랙 아이디를 입력해주세요.")
+    @NotBlank(message = "슬랙 아이디는 필수입니다.")
     @Size(max = 20)
     @JsonProperty("slack_id")
     String slackId,
 
-    @NotBlank(message = "비밀번호를 입력해주세요.")
+    @NotBlank(message = "비밀번호는 필수입니다.")
     @Size(min = 8, max = 15, message = "비밀번호는 8자 이상 15자 이하여야 합니다.")
     @Pattern(
             regexp = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[^A-Za-z0-9]).{8,15}$",

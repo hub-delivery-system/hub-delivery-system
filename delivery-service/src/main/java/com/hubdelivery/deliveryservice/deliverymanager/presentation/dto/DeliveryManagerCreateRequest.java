@@ -13,7 +13,7 @@ public class DeliveryManagerCreateRequest {
     @NotNull(message = "userId는 필수입니다.")
     private UUID userId;
 
-    @NotNull(message = "hubId는 필수입니다.")
+    // COMPANY_DELIVERY 타입일 때 필수, HUB_DELIVERY 타입은 null
     private UUID hubId;
 
     // COMPANY_DELIVERY 타입일 때만 사용
