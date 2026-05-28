@@ -46,7 +46,6 @@ services:
       - "9411:9411"
     restart: unless-stopped
     healthcheck:
-      # Zipkin 내부 헬스체크 엔드포인트를 호출하는 가장 안전한 방식
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9411 && echo -e 'GET /health HTTP/1.1\r\nHost: localhost\r\n\r\n' >&3 && close 3"]
       interval: 10s
       timeout: 5s
@@ -91,7 +90,7 @@ services:
       dockerfile: Dockerfile
     container_name: logistics-eureka
     ports:
-      - "8761:8761"
+      - "19090:19090"
     restart: unless-stopped
     depends_on:
       postgres:
@@ -103,7 +102,7 @@ services:
       keycloak:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:19090/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -119,16 +118,16 @@ services:
       dockerfile: Dockerfile
     container_name: logistics-gateway
     ports:
-      - "19000:19000"
+      - "19010:19010"
     environment:
       EUREKA_SERVER_URL: ${EUREKA_SERVER_URL}
-      JWT_SECRET: ${JWT_SECRET}
+      KEYCLOAK_JWK_SET_URI: ${KEYCLOAK_JWK_SET_URI}
     restart: unless-stopped
     depends_on:
       eureka-server:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:19000/actuator/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:19010/actuator/health"]
       interval: 10s
       timeout: 5s
       retries: 5
