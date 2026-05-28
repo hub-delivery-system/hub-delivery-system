@@ -8,7 +8,9 @@ import org.springframework.context.annotation.Import;
 
 @SpringBootApplication(scanBasePackages = {
         "com.hubdelivery.hub",
-        "com.hubdelivery.common"
+        "com.hubdelivery.common",
+        "com.hubdelivery.hubtohub",
+        "com.hubdelivery.global"
 })
 @EnableDiscoveryClient
 @Import(JpaAuditingConfig.class)
