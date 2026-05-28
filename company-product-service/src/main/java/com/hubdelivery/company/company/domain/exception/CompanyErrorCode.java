@@ -14,6 +14,7 @@ public enum CompanyErrorCode implements ErrorCode {
     RELATED_HUB_NOT_FOUND(HttpStatus.NOT_FOUND, "COMPANY-003", "관리 허브를 찾을 수 없습니다."),
 
     RELATED_HUB_INTEGRATION_FAILED(HttpStatus.SERVICE_UNAVAILABLE, "COMPANY-901", "허브 서비스 연동에 실패했습니다."),
+    RELATED_USER_INTEGRATION_FAILED(HttpStatus.SERVICE_UNAVAILABLE, "COMPANY-902", "사용자 서비스 연동에 실패했습니다."),
     ;
 
     private final HttpStatus status;
