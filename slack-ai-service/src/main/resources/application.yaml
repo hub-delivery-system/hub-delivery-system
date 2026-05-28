@@ -1,0 +1,61 @@
+server:
+  port: 19095
+
+spring:
+  application:
+    name: slack-ai-service
+
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/slack_ai_db}
+    username: ${DB_USERNAME:hub}
+    password: ${DB_PASSWORD:hub}
+
+  jpa:
+    database: postgresql
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    open-in-view: false
+    properties:
+      hibernate:
+        format_sql: true
+
+  sql:
+    init:
+      mode: never
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:19090}/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+
+slack:
+  bot:
+    token: ${SLACK_BOT_TOKEN:test-token}
+
+ai:
+  gemini:
+    api-key: ${AI_API_KEY:test-key}
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:}, traceId=%X{traceId:-}, spanId=%X{spanId:-}]"
+
+management:
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      enabled: false
