@@ -56,11 +56,12 @@ class OrderServiceTest {
     // -----------------------------------------------------------------------
 
     /** 리플렉션으로 Order의 id·status 필드를 강제 설정 */
-    private Order buildOrder(UUID id, OrderStatus status, UUID producerId, UUID productId) {
+    private Order buildOrder(UUID id, OrderStatus status, UUID producerId, UUID productId, UUID hubId) {
         Order order = Order.builder()
                 .producerId(producerId)
                 .receiverId(UUID.randomUUID())
                 .productId(productId)
+                .hubId(hubId)
                 .amount(10)
                 .requestMessage("빠른 납품 요청")
                 .build();
@@ -132,11 +133,17 @@ class OrderServiceTest {
         void create_success_withDeliveryLinked() {
             // given
             String userId = UUID.randomUUID().toString();
+            UUID hubId = UUID.randomUUID();
             UUID deliveryId = UUID.randomUUID();
             OrderCreateRequest request = buildCreateRequest();
 
+            // create()는 product-service에서 hubId를 조회한다
+            ProductResponse productResp = mock(ProductResponse.class);
+            given(productResp.getHubId()).willReturn(hubId);
+            given(productServiceClient.getProduct(any())).willReturn(ApiResponse.ok(productResp));
+
             Order savedOrder = buildOrder(UUID.randomUUID(), OrderStatus.PENDING,
-                    UUID.fromString(userId), request.getProductId());
+                    UUID.fromString(userId), request.getProductId(), hubId);
             given(orderRepository.save(any())).willReturn(savedOrder);
 
             DeliveryResponse deliveryResponse = mock(DeliveryResponse.class);
@@ -157,10 +164,15 @@ class OrderServiceTest {
         void create_deliveryFailed_throwsException() {
             // given
             String userId = UUID.randomUUID().toString();
+            UUID hubId = UUID.randomUUID();
             OrderCreateRequest request = buildCreateRequest();
 
+            ProductResponse productResp = mock(ProductResponse.class);
+            given(productResp.getHubId()).willReturn(hubId);
+            given(productServiceClient.getProduct(any())).willReturn(ApiResponse.ok(productResp));
+
             Order savedOrder = buildOrder(UUID.randomUUID(), OrderStatus.PENDING,
-                    UUID.fromString(userId), request.getProductId());
+                    UUID.fromString(userId), request.getProductId(), hubId);
             given(orderRepository.save(any())).willReturn(savedOrder);
             given(deliveryServiceClient.create(any())).willThrow(new RuntimeException("연결 실패"));
 
@@ -185,7 +197,7 @@ class OrderServiceTest {
         void update_pendingToConfirmed_succeeds() {
             // given
             UUID orderId = UUID.randomUUID();
-            Order order = buildOrder(orderId, OrderStatus.PENDING, UUID.randomUUID(), UUID.randomUUID());
+            Order order = buildOrder(orderId, OrderStatus.PENDING, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
             given(orderRepository.findByIdAndDeletedAtIsNull(orderId)).willReturn(Optional.of(order));
 
             // when
@@ -201,7 +213,7 @@ class OrderServiceTest {
         void update_fromCompleted_throwsInvalidTransition() {
             // given
             UUID orderId = UUID.randomUUID();
-            Order order = buildOrder(orderId, OrderStatus.COMPLETED, UUID.randomUUID(), UUID.randomUUID());
+            Order order = buildOrder(orderId, OrderStatus.COMPLETED, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
             given(orderRepository.findByIdAndDeletedAtIsNull(orderId)).willReturn(Optional.of(order));
 
             // when & then
@@ -217,7 +229,7 @@ class OrderServiceTest {
         void update_fromCanceled_throwsInvalidTransition() {
             // given
             UUID orderId = UUID.randomUUID();
-            Order order = buildOrder(orderId, OrderStatus.CANCELED, UUID.randomUUID(), UUID.randomUUID());
+            Order order = buildOrder(orderId, OrderStatus.CANCELED, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
             given(orderRepository.findByIdAndDeletedAtIsNull(orderId)).willReturn(Optional.of(order));
 
             // when & then
@@ -233,7 +245,7 @@ class OrderServiceTest {
         void update_confirmedToCanceled_succeeds() {
             // given
             UUID orderId = UUID.randomUUID();
-            Order order = buildOrder(orderId, OrderStatus.CONFIRMED, UUID.randomUUID(), UUID.randomUUID());
+            Order order = buildOrder(orderId, OrderStatus.CONFIRMED, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
             given(orderRepository.findByIdAndDeletedAtIsNull(orderId)).willReturn(Optional.of(order));
 
             // when
@@ -259,19 +271,15 @@ class OrderServiceTest {
             // given
             UUID orderId = UUID.randomUUID();
             UUID hubId = UUID.randomUUID();
-            UUID productId = UUID.randomUUID();
             String userId = UUID.randomUUID().toString();
 
-            Order order = buildOrder(orderId, OrderStatus.PENDING, UUID.randomUUID(), productId);
+            // 주문의 hubId == 사용자의 hubId → 수정 허용
+            Order order = buildOrder(orderId, OrderStatus.PENDING, UUID.randomUUID(), UUID.randomUUID(), hubId);
             given(orderRepository.findByIdAndDeletedAtIsNull(orderId)).willReturn(Optional.of(order));
 
             UserResponse userResp = mock(UserResponse.class);
             given(userResp.getHubId()).willReturn(hubId);
             given(userServiceClient.getUser(any())).willReturn(ApiResponse.ok(userResp));
-
-            ProductResponse productResp = mock(ProductResponse.class);
-            given(productResp.getHubId()).willReturn(hubId); // 동일한 허브
-            given(productServiceClient.getProduct(any())).willReturn(ApiResponse.ok(productResp));
 
             // when & then
             var response = orderService.update(orderId, buildUpdateRequest(OrderStatus.CONFIRMED),
@@ -284,19 +292,16 @@ class OrderServiceTest {
         void update_hubManagerOtherHub_throwsForbidden() {
             // given
             UUID orderId = UUID.randomUUID();
-            UUID productId = UUID.randomUUID();
+            UUID orderHubId = UUID.randomUUID();
+            UUID userHubId = UUID.randomUUID(); // 서로 다른 허브 → 수정 불가
             String userId = UUID.randomUUID().toString();
 
-            Order order = buildOrder(orderId, OrderStatus.PENDING, UUID.randomUUID(), productId);
+            Order order = buildOrder(orderId, OrderStatus.PENDING, UUID.randomUUID(), UUID.randomUUID(), orderHubId);
             given(orderRepository.findByIdAndDeletedAtIsNull(orderId)).willReturn(Optional.of(order));
 
             UserResponse userResp = mock(UserResponse.class);
-            given(userResp.getHubId()).willReturn(UUID.randomUUID()); // 다른 허브
+            given(userResp.getHubId()).willReturn(userHubId);
             given(userServiceClient.getUser(any())).willReturn(ApiResponse.ok(userResp));
-
-            ProductResponse productResp = mock(ProductResponse.class);
-            given(productResp.getHubId()).willReturn(UUID.randomUUID()); // 또 다른 허브
-            given(productServiceClient.getProduct(any())).willReturn(ApiResponse.ok(productResp));
 
             // when & then
             assertThatThrownBy(() -> orderService.update(orderId, buildUpdateRequest(OrderStatus.CONFIRMED),
@@ -311,7 +316,7 @@ class OrderServiceTest {
         void update_deliveryManager_throwsForbidden() {
             // given
             UUID orderId = UUID.randomUUID();
-            Order order = buildOrder(orderId, OrderStatus.PENDING, UUID.randomUUID(), UUID.randomUUID());
+            Order order = buildOrder(orderId, OrderStatus.PENDING, UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
             given(orderRepository.findByIdAndDeletedAtIsNull(orderId)).willReturn(Optional.of(order));
 
             // when & then
@@ -328,7 +333,7 @@ class OrderServiceTest {
             // given
             UUID orderId = UUID.randomUUID();
             UUID userId = UUID.randomUUID();
-            Order order = buildOrder(orderId, OrderStatus.PENDING, userId, UUID.randomUUID());
+            Order order = buildOrder(orderId, OrderStatus.PENDING, userId, UUID.randomUUID(), UUID.randomUUID());
             given(orderRepository.findByIdAndDeletedAtIsNull(orderId)).willReturn(Optional.of(order));
 
             // when & then
@@ -343,7 +348,7 @@ class OrderServiceTest {
             UUID orderId = UUID.randomUUID();
             UUID ownerUserId = UUID.randomUUID();
             UUID otherUserId = UUID.randomUUID();
-            Order order = buildOrder(orderId, OrderStatus.PENDING, ownerUserId, UUID.randomUUID());
+            Order order = buildOrder(orderId, OrderStatus.PENDING, ownerUserId, UUID.randomUUID(), UUID.randomUUID());
             given(orderRepository.findByIdAndDeletedAtIsNull(orderId)).willReturn(Optional.of(order));
 
             // when & then

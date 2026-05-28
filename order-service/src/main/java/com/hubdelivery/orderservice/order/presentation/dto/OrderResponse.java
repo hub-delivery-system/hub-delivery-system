@@ -13,6 +13,7 @@ public class OrderResponse {
     private final UUID producerId;
     private final UUID receiverId;
     private final UUID productId;
+    private final UUID hubId;
     private final Integer amount;
     private final UUID deliveryId;
     private final String requestMessage;
@@ -25,6 +26,7 @@ public class OrderResponse {
         this.producerId = order.getProducerId();
         this.receiverId = order.getReceiverId();
         this.productId = order.getProductId();
+        this.hubId = order.getHubId();
         this.amount = order.getAmount();
         this.deliveryId = order.getDeliveryId();
         this.requestMessage = order.getRequestMessage();

@@ -22,10 +22,11 @@ public class OrderRepositoryCustomImpl implements OrderRepositoryCustom {
     @Override
     public Page<Order> searchOrders(
             OrderSearchCondition cond,
+            UUID fixedHubId,
             UUID fixedProducerId,
             Pageable pageable) {
 
-        BooleanBuilder condition = buildCondition(cond, fixedProducerId);
+        BooleanBuilder condition = buildCondition(cond, fixedHubId, fixedProducerId);
 
         List<Order> content = queryFactory
                 .selectFrom(ORDER)
@@ -44,11 +45,16 @@ public class OrderRepositoryCustomImpl implements OrderRepositoryCustom {
         return new PageImpl<>(content, pageable, total == null ? 0 : total);
     }
 
-    private BooleanBuilder buildCondition(OrderSearchCondition cond, UUID fixedProducerId) {
+    private BooleanBuilder buildCondition(OrderSearchCondition cond, UUID fixedHubId, UUID fixedProducerId) {
         BooleanBuilder builder = new BooleanBuilder();
 
         // 소프트 딜리트 제외는 항상 적용
         builder.and(ORDER.deletedAt.isNull());
+
+        // HUB_MANAGER 권한: 담당 허브 주문만 조회
+        if (fixedHubId != null) {
+            builder.and(ORDER.hubId.eq(fixedHubId));
+        }
 
         // DELIVERY_MANAGER·COMPANY_MANAGER 권한: 본인이 요청한 주문만 조회
         if (fixedProducerId != null) {
@@ -59,6 +65,10 @@ public class OrderRepositoryCustomImpl implements OrderRepositoryCustom {
             return builder;
         }
 
+        // fixedHubId가 없을 때만 사용자 지정 hubId 필터 적용 (MASTER 전용 검색)
+        if (fixedHubId == null && cond.getHubId() != null) {
+            builder.and(ORDER.hubId.eq(cond.getHubId()));
+        }
         // fixedProducerId가 없을 때만 사용자 지정 producerId 필터 적용
         if (fixedProducerId == null && cond.getProducerId() != null) {
             builder.and(ORDER.producerId.eq(cond.getProducerId()));

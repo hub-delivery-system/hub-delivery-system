@@ -39,6 +39,10 @@ public class Order extends BaseEntity {
     @Column(nullable = false, updatable = false)
     private UUID productId;
 
+    // 상품이 속한 허브 ID — HUB_MANAGER 목록 조회 필터용 (생성 시 product-service에서 조회해 저장)
+    @Column(nullable = false, updatable = false)
+    private UUID hubId;
+
     // 주문 수량
     @Column(nullable = false)
     private Integer amount;
@@ -56,11 +60,12 @@ public class Order extends BaseEntity {
     private OrderStatus status;
 
     @Builder
-    private Order(UUID producerId, UUID receiverId, UUID productId,
+    private Order(UUID producerId, UUID receiverId, UUID productId, UUID hubId,
                   Integer amount, String requestMessage) {
         this.producerId = producerId;
         this.receiverId = receiverId;
         this.productId = productId;
+        this.hubId = hubId;
         this.amount = amount;
         this.requestMessage = requestMessage;
         this.status = OrderStatus.PENDING; // 주문 생성 시 항상 PENDING으로 시작

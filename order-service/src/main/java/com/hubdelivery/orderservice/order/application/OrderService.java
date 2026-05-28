@@ -34,18 +34,22 @@ public class OrderService {
 
     @Transactional
     public OrderResponse create(OrderCreateRequest request, String userId, UserRole role) {
-        // 1. 주문 저장 (producerId는 현재 로그인한 사용자)
+        // 1. 상품의 hubId 조회 (HUB_MANAGER 권한 체크 및 필터링에 사용)
+        UUID hubId = productServiceClient.getProduct(request.getProductId()).data().getHubId();
+
+        // 2. 주문 저장 (producerId는 현재 로그인한 사용자)
         Order order = Order.builder()
                 .producerId(UUID.fromString(userId))
                 .receiverId(request.getReceiverId())
                 .productId(request.getProductId())
+                .hubId(hubId)
                 .amount(request.getAmount())
                 .requestMessage(request.getRequestMessage())
                 .build();
 
         Order saved = orderRepository.save(order);
 
-        // 2. delivery-service 연동하여 배송 생성
+        // 3. delivery-service 연동하여 배송 생성
         try {
             var deliveryResp = deliveryServiceClient.create(buildDeliveryRequest(saved.getId(), request));
             saved.assignDelivery(deliveryResp.data().getId());
@@ -64,14 +68,19 @@ public class OrderService {
 
         Pageable pageable = PageableUtils.createPageable(page, size);
 
-        // DELIVERY_MANAGER·COMPANY_MANAGER는 본인이 요청한 주문만 조회
+        UUID fixedHubId = null;
         UUID fixedProducerId = null;
-        if (role == UserRole.DELIVERY_MANAGER || role == UserRole.COMPANY_MANAGER) {
+
+        if (role == UserRole.HUB_MANAGER) {
+            // HUB_MANAGER: 담당 허브 주문만 조회
+            fixedHubId = userServiceClient.getUser(UUID.fromString(userId)).data().getHubId();
+        } else if (role == UserRole.DELIVERY_MANAGER || role == UserRole.COMPANY_MANAGER) {
+            // DELIVERY_MANAGER·COMPANY_MANAGER: 본인이 요청한 주문만 조회
             fixedProducerId = UUID.fromString(userId);
         }
 
         return PageResponse.from(
-                orderRepository.searchOrders(cond, fixedProducerId, pageable)
+                orderRepository.searchOrders(cond, fixedHubId, fixedProducerId, pageable)
                         .map(OrderResponse::from));
     }
 
@@ -139,9 +148,13 @@ public class OrderService {
     // 권한 체크
     // -----------------------------------------------------------------------
 
-    // 조회: 전체 가능, DELIVERY_MANAGER·COMPANY_MANAGER는 본인 주문만
+    // 조회: MASTER 전체, HUB_MANAGER 담당 허브, DELIVERY_MANAGER·COMPANY_MANAGER 본인 주문
     private void checkReadPermission(UserRole role, String userId, Order order) {
-        if (role == UserRole.MASTER || role == UserRole.HUB_MANAGER) return;
+        if (role == UserRole.MASTER) return;
+        if (role == UserRole.HUB_MANAGER) {
+            checkHubPermission(userId, order);
+            return;
+        }
         if (!order.getProducerId().toString().equals(userId)) {
             throw new OrderException(OrderErrorCode.ORDER_FORBIDDEN);
         }
@@ -167,11 +180,10 @@ public class OrderService {
         throw new OrderException(OrderErrorCode.ORDER_FORBIDDEN);
     }
 
-    // HUB_MANAGER 허브 권한 검증: 상품의 hubId == 사용자의 hubId
+    // HUB_MANAGER 허브 권한 검증: 사용자의 hubId == order.hubId (비정규화된 값 직접 비교)
     private void checkHubPermission(String userId, Order order) {
         UUID userHubId = userServiceClient.getUser(UUID.fromString(userId)).data().getHubId();
-        UUID productHubId = productServiceClient.getProduct(order.getProductId()).data().getHubId();
-        if (!userHubId.equals(productHubId)) {
+        if (!userHubId.equals(order.getHubId())) {
             throw new OrderException(OrderErrorCode.ORDER_FORBIDDEN);
         }
     }
