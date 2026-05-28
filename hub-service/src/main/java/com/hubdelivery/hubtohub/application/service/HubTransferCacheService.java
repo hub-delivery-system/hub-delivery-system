@@ -104,4 +104,8 @@ public class HubTransferCacheService {
         String key = "transfer:" + transferId;
         redisTemplate.delete(key);
     }
+
+    public void evictRoute(UUID startHubId, UUID endHubId) {
+        redisTemplate.delete(generateCacheKey(startHubId, endHubId));
+    }
 }
