@@ -6,10 +6,12 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.openfeign.EnableFeignClients;
 import org.springframework.context.annotation.Import;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 @SpringBootApplication
-@EnableFeignClients                                             // Feign 클라이언트 활성화
-@Import({JpaAuditingConfig.class, GlobalExceptionHandler.class}) // common-module의 Auditing·전역 예외처리 적용
+@EnableFeignClients
+@EnableScheduling
+@Import({JpaAuditingConfig.class, GlobalExceptionHandler.class})
 public class OrderServiceApplication {
 
     public static void main(String[] args) {
