@@ -13,6 +13,15 @@ spring:
       hibernate:
         format_sql: true
     show-sql: true
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      auto-offset-reset: earliest
 
 server:
   port: 19060
@@ -26,3 +35,4 @@ springdoc:
     path: /swagger-ui.html
   api-docs:
     path: /v3/api-docs
+

@@ -5,6 +5,7 @@ import com.hubdelivery.deliveryservice.delivery.domain.entity.QDelivery;
 import com.hubdelivery.deliveryservice.delivery.presentation.dto.DeliverySearchCondition;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -61,7 +62,7 @@ public class DeliveryRepositoryCustomImpl implements DeliveryRepositoryCustom {
             );
         }
 
-        // DELIVERY_MANAGER 권한: 본인이 담당하는 배송만
+        // DELIVERY_MANAGER 권한: 본인이 담당하는 배송만 (X-User-Id 헤더 기반으로 서비스 계층에서 고정)
         if (fixedManagerId != null) {
             builder.and(DELIVERY.deliveryManagerId.eq(fixedManagerId));
         }
@@ -84,6 +85,21 @@ public class DeliveryRepositoryCustomImpl implements DeliveryRepositoryCustom {
             if (cond.getEndHubId() != null) {
                 builder.and(DELIVERY.endHubId.eq(cond.getEndHubId()));
             }
+        }
+
+        // MASTER 권한에서 deliveryManagerId 쿼리 파라미터를 직접 지정한 경우에만 적용.
+        // fixedManagerId가 이미 있으면 담당자 고정이 완료된 상태이므로 중복 적용하지 않는다.
+        if (fixedManagerId == null && cond.getDeliveryManagerId() != null) {
+            builder.and(DELIVERY.deliveryManagerId.eq(cond.getDeliveryManagerId()));
+        }
+
+        // 날짜 필터: 지정된 날짜의 자정(00:00) 이상 ~ 익일 자정 미만으로 createdAt 범위를 한정.
+        // slack-service 스케줄러가 당일 배송만 추출할 때 사용한다.
+        if (cond.getDate() != null) {
+            LocalDateTime startOfDay = cond.getDate().atStartOfDay();
+            LocalDateTime startOfNextDay = cond.getDate().plusDays(1).atStartOfDay();
+            builder.and(DELIVERY.createdAt.goe(startOfDay));
+            builder.and(DELIVERY.createdAt.lt(startOfNextDay));
         }
 
         return builder;
