@@ -12,6 +12,8 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -24,6 +26,8 @@ import com.hubdelivery.common.exception.CommonException;
 public class CompanyDirectoryClient {
 
     private static final int LOOKUP_PAGE_SIZE = 100;
+    private static final String SYSTEM_USER_ID = "00000000-0000-0000-0000-000000000000";
+    private static final String SYSTEM_ROLE = "MASTER";
 
     private static final ParameterizedTypeReference<ApiResponseEnvelope<PageEnvelope<CompanySummary>>> COMPANY_LIST_RESPONSE =
             new ParameterizedTypeReference<>() {
@@ -52,6 +56,8 @@ public class CompanyDirectoryClient {
         try {
             ApiResponseEnvelope<PageEnvelope<CompanySummary>> response = restClient.get()
                     .uri(uri)
+                    .header("X-User-Id", SYSTEM_USER_ID)
+                    .header("X-Role", SYSTEM_ROLE)
                     .retrieve()
                     .body(COMPANY_LIST_RESPONSE);
 
@@ -85,6 +91,8 @@ public class CompanyDirectoryClient {
         try {
             ApiResponseEnvelope<CompanyDetail> response = restClient.get()
                     .uri(uri)
+                    .header("X-User-Id", SYSTEM_USER_ID)
+                    .header("X-Role", SYSTEM_ROLE)
                     .retrieve()
                     .body(COMPANY_DETAIL_RESPONSE);
 
@@ -125,12 +133,14 @@ public class CompanyDirectoryClient {
 
     private record CompanySummary(
             UUID id,
+            @JsonProperty("company_name")
             String companyName
     ) {
     }
 
     private record CompanyDetail(
             UUID id,
+            @JsonProperty("hub_id")
             UUID hubId
     ) {
     }
