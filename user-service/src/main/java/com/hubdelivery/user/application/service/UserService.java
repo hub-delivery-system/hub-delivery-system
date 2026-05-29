@@ -5,6 +5,8 @@ import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.StringUtils;
 
 import lombok.RequiredArgsConstructor;
@@ -29,6 +31,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserAffiliationResolverService userAffiliationResolverService;
     private final UserProvisioningService userProvisioningService;
+    private final DeliveryManagerProvisionService deliveryManagerProvisionService;
 
     @Transactional
     public UserApproveResponse approve(UUID userId) {
@@ -53,9 +56,7 @@ public class UserService {
         validateOrgByRole(mappedRole, requestedRole, hubId, companyId);
         user.approve(mappedRole, hubId, companyId);
         userProvisioningService.provisionApprovedUser(user);
-
-        // TODO: 배송 담당자 승인 시 정원 체크
-        // TODO: 배송 담당자 승인 시 delivery-service 레코드 생성
+        deliveryManagerProvisionService.provisionIfRequired(user);
 
         return new UserApproveResponse(
                 user.getId(),
@@ -96,8 +97,16 @@ public class UserService {
         RequestedRole nextRequestedRole = request.requestedRole() != null ? request.requestedRole() : user.getRequestedRole();
         UserRole nextRole = request.role() != null ? request.role() : user.getRole();
         String nextAffiliationName = StringUtils.hasText(request.affiliationName()) ? request.affiliationName() : user.getAffiliationName();
-        UUID nextHubId = request.hubId() != null ? request.hubId() : user.getHubId();
-        UUID nextCompanyId = request.companyId() != null ? request.companyId() : user.getCompanyId();
+        UpdatedOrganization updatedOrganization = resolveOrganizationForUpdate(
+                user,
+                request,
+                nextRole,
+                nextRequestedRole,
+                nextAffiliationName
+        );
+
+        UUID nextHubId = updatedOrganization.hubId();
+        UUID nextCompanyId = updatedOrganization.companyId();
 
         validateRoleAndRequestedRole(nextRole, nextRequestedRole);
         validateOrgByRole(nextRole, nextRequestedRole, nextHubId, nextCompanyId);
@@ -117,7 +126,7 @@ public class UserService {
     @Transactional
     public void deleteUser(UUID userId) {
         User user = findActiveUser(userId);
-        user.softDelete("MASTER"); // TODO: 실제 로그인 사용자 식별자로 변경
+        user.softDelete(currentActor());
     }
 
     private User findActiveUser(UUID userId) {
@@ -195,5 +204,70 @@ public class UserService {
                 }
             }
         }
+    }
+
+    private UpdatedOrganization resolveOrganizationForUpdate(
+            User user,
+            UserUpdateRequest request,
+            UserRole nextRole,
+            RequestedRole nextRequestedRole,
+            String nextAffiliationName
+    ) {
+        boolean roleChanged = request.role() != null && request.role() != user.getRole();
+        boolean requestedRoleChanged = request.requestedRole() != null && request.requestedRole() != user.getRequestedRole();
+        boolean affiliationChanged = StringUtils.hasText(request.affiliationName())
+                && !request.affiliationName().equals(user.getAffiliationName());
+        boolean hubIdChanged = request.hubId() != null && !request.hubId().equals(user.getHubId());
+        boolean companyIdChanged = request.companyId() != null && !request.companyId().equals(user.getCompanyId());
+
+        UUID nextHubId = user.getHubId();
+        UUID nextCompanyId = user.getCompanyId();
+
+        if (roleChanged || requestedRoleChanged || affiliationChanged) {
+            UserAffiliationResolverService.ResolvedOrganization resolved =
+                    userAffiliationResolverService.resolve(nextRequestedRole, nextAffiliationName);
+            nextHubId = resolved.hubId();
+            nextCompanyId = resolved.companyId();
+        }
+
+        if (hubIdChanged) {
+            nextHubId = request.hubId();
+        }
+        if (companyIdChanged) {
+            nextCompanyId = request.companyId();
+        }
+
+        if (nextRole == UserRole.MASTER) {
+            nextHubId = null;
+            nextCompanyId = null;
+        } else if (nextRole == UserRole.HUB_MANAGER
+                || nextRequestedRole == RequestedRole.HUB_DELIVERY_MANAGER) {
+            nextCompanyId = null;
+        } else if (nextRole == UserRole.COMPANY_MANAGER
+                || nextRequestedRole == RequestedRole.COMPANY_DELIVERY_MANAGER) {
+            nextHubId = null;
+        }
+
+        return new UpdatedOrganization(nextHubId, nextCompanyId);
+    }
+
+    private record UpdatedOrganization(
+            UUID hubId,
+            UUID companyId
+    ) {
+    }
+
+    private String currentActor() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null) {
+            return "SYSTEM";
+        }
+
+        String actor = authentication.getName();
+        if (!StringUtils.hasText(actor) || "anonymousUser".equals(actor)) {
+            return "SYSTEM";
+        }
+
+        return actor;
     }
 }

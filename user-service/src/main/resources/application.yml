@@ -42,6 +42,8 @@ integration:
   affiliation:
     hub-service-base-url: ${HUB_SERVICE_BASE_URL:http://localhost:19030}
     company-service-base-url: ${COMPANY_SERVICE_BASE_URL:http://localhost:19040}
+  delivery-manager:
+    service-base-url: ${DELIVERY_SERVICE_BASE_URL:http://localhost:19060}
 
 ---
 spring:
@@ -74,3 +76,5 @@ integration:
   affiliation:
     hub-service-base-url: ${HUB_SERVICE_BASE_URL:http://hub-service:19030}
     company-service-base-url: ${COMPANY_SERVICE_BASE_URL:http://company-product-service:19040}
+  delivery-manager:
+    service-base-url: ${DELIVERY_SERVICE_BASE_URL:http://delivery-service:19060}
