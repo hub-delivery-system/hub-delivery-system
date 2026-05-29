@@ -31,6 +31,12 @@ keycloak:
   realm: ${KEYCLOAK_REALM:hub-delivery}
   client-id: ${KEYCLOAK_CLIENT_ID:hub-delivery-client}
   client-secret: ${KEYCLOAK_CLIENT_SECRET:}
+  admin:
+    realm: ${KEYCLOAK_ADMIN_REALM:master}
+    client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:admin-cli}
+    client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:}
+    username: ${KEYCLOAK_ADMIN_USERNAME:admin}
+    password: ${KEYCLOAK_ADMIN_PASSWORD:admin}
 
 ---
 spring:
