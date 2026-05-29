@@ -15,6 +15,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import com.hubdelivery.common.exception.CommonErrorCode;
 import com.hubdelivery.common.exception.CommonException;
+import com.hubdelivery.user.domain.exception.DeliveryManagerCapacityExceededException;
 
 @Slf4j
 @Service
@@ -51,7 +52,7 @@ public class DeliveryManagerClient {
         } catch (RestClientResponseException e) {
             DeliveryManagerErrorResponse error = parseError(e.getResponseBodyAsString());
             if (isCapacityExceeded(e.getStatusCode().value(), error)) {
-                throw new CommonException(CommonErrorCode.INVALID_INPUT_VALUE, error.message());
+                throw new DeliveryManagerCapacityExceededException(error.message());
             }
 
             log.error("Delivery-manager 생성 연동 실패. status={}, body={}",
