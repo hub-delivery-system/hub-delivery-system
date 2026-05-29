@@ -27,7 +27,7 @@ public class ReqHubDto {
     @NotNull(message = "경도는 필수입니다")
     @DecimalMin(value = "-180.0000000", inclusive = true, message = "경도는 -180 이상이어야 합니다")
     @DecimalMax(value = "180.0000000", inclusive = true, message = "경도는 180 이하여야 합니다")
-    @Digits(integer = 2, fraction = 7, message = "위도는 정수 2자리, 소수 7자리여야 합니다")
+    @Digits(integer = 3, fraction = 7, message = "경도는 정수 3자리, 소수 7자리여야 합니다")
     private BigDecimal longitude;
 
 

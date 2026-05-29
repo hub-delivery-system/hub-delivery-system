@@ -5,6 +5,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 import java.util.List;
 
@@ -12,6 +13,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @JsonIgnoreProperties(ignoreUnknown = true)
+@Setter
 public class DirectionsResponse {
 
     private List<Route> routes;
@@ -20,6 +22,7 @@ public class DirectionsResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     @JsonIgnoreProperties(ignoreUnknown = true)
+    @Setter
     public static class Route {
 
         @JsonProperty("result_code")
@@ -37,6 +40,7 @@ public class DirectionsResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     @JsonIgnoreProperties(ignoreUnknown = true)
+    @Setter
     public static class Summary {
         private Integer distance;
         private Integer duration;
@@ -46,6 +50,7 @@ public class DirectionsResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     @JsonIgnoreProperties(ignoreUnknown = true)
+    @Setter
     public static class Section {
         private Integer distance;       // 구간 거리 (m)
         private Integer duration;       // 구간 시간 (초)
@@ -56,6 +61,7 @@ public class DirectionsResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     @JsonIgnoreProperties(ignoreUnknown = true)
+    @Setter
     public static class Bound {
         private Double minX;
         private Double minY;
