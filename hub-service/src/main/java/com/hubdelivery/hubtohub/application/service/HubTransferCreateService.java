@@ -136,7 +136,7 @@ public class HubTransferCreateService {
             CentralHubEntity toCentralHubEntity = centralHubRepository.findByHubIdIsActive(toCentralHub.getId())
                     .orElseThrow(() -> new HubTransferInvalidCentralHub("존재하지 않는 중앙 허브입니다."));
 
-            // ✅ HubTransferWaypointEntity는 ID만 저장 (관계는 조회용)
+            // HubTransferWaypointEntity는 ID만 저장 (관계는 조회용)
             HubTransferWaypointEntity toWaypoint = HubTransferWaypointEntity.builder()
                     .hubTransfer(transferEntity)
                     .centralHub(toCentralHubEntity)
@@ -158,7 +158,7 @@ public class HubTransferCreateService {
     }
 
     /**
-     * ✅ DB에서 조회한 Entity로 ResponseDto 생성
+     * DB에서 조회한 Entity로 ResponseDto 생성
      * 관계로 로드된 데이터 사용
      */
     public ResGetHubTransferDto buildResponseDtoFromDb(HubTransferEntity entity) {
@@ -223,13 +223,12 @@ public class HubTransferCreateService {
     }
 
     /**
-     * ✅ 이미 모든 관계가 로드된 Entity로 ResponseDto 생성 (쿼리 없음!)
+     * 이미 모든 관계가 로드된 Entity로 ResponseDto 생성 (쿼리 없음!)
      * Repository에서 Fetch Join으로 로드한 Entity 사용
      */
     public ResGetHubTransferDto buildResponseDtoFromFetchedEntity(HubTransferEntity entity) {
 
-        // waypoints가 비어있으면 빈 list 반환
-        log.info("getWaypoints: {}", entity.getWaypoints());
+
         if (entity.getWaypoints() == null || entity.getWaypoints().isEmpty()) {
             return ResGetHubTransferDto.builder()
                     .routeId(entity.getId())
@@ -247,7 +246,6 @@ public class HubTransferCreateService {
                 .map(waypoint -> {
                     // 관계로부터 직접 조회
                     CentralHubEntity centralHub = waypoint.getCentralHub();
-                    log.info("waypoint by stream: {}", centralHub.getId());
                     if (centralHub == null) {
                         throw new HubTransferInvalidCentralHub("존재하지 않는 중앙 허브입니다.");
                     }

@@ -156,7 +156,7 @@ public class HubTransferService {
                     return new HubTransferNotFoundException();
                 });
 
-        HubPair hubs = validateAndGetHubs(existingRoute.getStartHubId(), existingRoute.getEndHubId());
+        validateAndGetHubs(existingRoute.getStartHubId(), existingRoute.getEndHubId());
 
         // 1. 캐시에서 transferId로 조회
         HubTransferCacheData cachedData = cacheService.getRouteByTransferId(transferId);
