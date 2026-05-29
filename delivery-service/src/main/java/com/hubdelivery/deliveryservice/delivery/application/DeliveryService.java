@@ -171,6 +171,17 @@ public class DeliveryService {
         delivery.softDelete(userId);
     }
 
+    // ORDER_CANCELLED 이벤트 수신 시 호출 — 연관 배송 및 경로 소프트 딜리트
+    @Transactional
+    public void cancelByOrderId(UUID orderId) {
+        deliveryRepository.findByOrderIdAndDeletedAtIsNull(orderId).ifPresent(delivery -> {
+            List<DeliveryRoute> routes =
+                    deliveryRouteRepository.findAllByDeliveryIdAndDeletedAtIsNullOrderBySequenceAsc(delivery.getId());
+            routes.forEach(r -> r.softDelete("system"));
+            delivery.softDelete("system");
+        });
+    }
+
     // -----------------------------------------------------------------------
     // 순환 배정 헬퍼
     // -----------------------------------------------------------------------

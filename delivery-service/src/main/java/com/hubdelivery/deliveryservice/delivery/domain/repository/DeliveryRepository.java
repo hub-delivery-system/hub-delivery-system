@@ -13,6 +13,8 @@ public interface DeliveryRepository extends JpaRepository<Delivery, UUID>, Deliv
 
     Optional<Delivery> findByIdAndDeletedAtIsNull(UUID id);
 
+    Optional<Delivery> findByOrderIdAndDeletedAtIsNull(UUID orderId);
+
     Page<Delivery> findAllByDeletedAtIsNull(Pageable pageable);
 
     // HUB_MANAGER: 담당 허브가 출발지 또는 도착지인 배송 목록
