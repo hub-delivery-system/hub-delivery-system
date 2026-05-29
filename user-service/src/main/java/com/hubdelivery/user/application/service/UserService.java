@@ -213,34 +213,44 @@ public class UserService {
             RequestedRole nextRequestedRole,
             String nextAffiliationName
     ) {
+        if (nextRole == UserRole.MASTER) {
+            if (request.hubId() != null || request.companyId() != null) {
+                throw new CommonException(
+                        CommonErrorCode.INVALID_INPUT_VALUE,
+                        "MASTER는 hubId/companyId를 직접 입력할 수 없습니다."
+                );
+            }
+
+            return new UpdatedOrganization(null, null);
+        }
+
         boolean roleChanged = request.role() != null && request.role() != user.getRole();
         boolean requestedRoleChanged = request.requestedRole() != null && request.requestedRole() != user.getRequestedRole();
         boolean affiliationChanged = StringUtils.hasText(request.affiliationName())
                 && !request.affiliationName().equals(user.getAffiliationName());
-        boolean hubIdChanged = request.hubId() != null && !request.hubId().equals(user.getHubId());
-        boolean companyIdChanged = request.companyId() != null && !request.companyId().equals(user.getCompanyId());
+        boolean manualOrganizationProvided = request.hubId() != null || request.companyId() != null;
 
         UUID nextHubId = user.getHubId();
         UUID nextCompanyId = user.getCompanyId();
 
-        if (roleChanged || requestedRoleChanged || affiliationChanged) {
+        if (roleChanged || requestedRoleChanged || affiliationChanged || manualOrganizationProvided) {
             UserAffiliationResolverService.ResolvedOrganization resolved =
                     userAffiliationResolverService.resolve(nextRequestedRole, nextAffiliationName);
             nextHubId = resolved.hubId();
             nextCompanyId = resolved.companyId();
         }
 
-        if (hubIdChanged) {
+        validateRequestedOrganization(request.hubId(), nextHubId, "hubId");
+        validateRequestedOrganization(request.companyId(), nextCompanyId, "companyId");
+
+        if (request.hubId() != null) {
             nextHubId = request.hubId();
         }
-        if (companyIdChanged) {
+        if (request.companyId() != null) {
             nextCompanyId = request.companyId();
         }
 
-        if (nextRole == UserRole.MASTER) {
-            nextHubId = null;
-            nextCompanyId = null;
-        } else if (nextRole == UserRole.HUB_MANAGER
+        if (nextRole == UserRole.HUB_MANAGER
                 || nextRequestedRole == RequestedRole.HUB_DELIVERY_MANAGER) {
             nextCompanyId = null;
         } else if (nextRole == UserRole.COMPANY_MANAGER
@@ -255,6 +265,15 @@ public class UserService {
             UUID hubId,
             UUID companyId
     ) {
+    }
+
+    private void validateRequestedOrganization(UUID requested, UUID resolved, String fieldName) {
+        if (requested != null && !requested.equals(resolved)) {
+            throw new CommonException(
+                    CommonErrorCode.INVALID_INPUT_VALUE,
+                    fieldName + "는 affiliationName/requestedRole 조건으로 조회된 값과 일치해야 합니다."
+            );
+        }
     }
 
     private String currentActor() {

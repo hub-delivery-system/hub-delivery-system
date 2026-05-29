@@ -105,6 +105,7 @@
 - 가입 요청: `requestedRole`, `affiliationName` 사용
 - `affiliationType`은 사용하지 않음
 - 승인/수정 시 `requestedRole + affiliationName`으로 허브/업체를 조회해 `hubId/companyId` 자동 결정
+- 수정 요청에 `hubId/companyId`를 포함할 수는 있지만, 이 값은 위 조회 결과와 일치할 때만 허용
 
 매핑 규칙:
 - `HUB_MANAGER` -> `role=HUB_MANAGER`, `hubId` 필요
