@@ -1,5 +1,6 @@
 package com.hubdelivery.deliveryservice.delivery.application;
 
+import com.hubdelivery.common.event.OrderCreatedEvent;
 import com.hubdelivery.common.response.PageResponse;
 import com.hubdelivery.common.security.UserRole;
 import com.hubdelivery.common.util.PageableUtils;
@@ -19,6 +20,7 @@ import com.hubdelivery.deliveryservice.deliveryroute.domain.entity.DeliveryRoute
 import com.hubdelivery.deliveryservice.deliveryroute.domain.repository.DeliveryRouteRepository;
 import com.hubdelivery.deliveryservice.deliveryroute.domain.type.DeliveryRouteStatus;
 import com.hubdelivery.deliveryservice.deliveryroute.presentation.dto.DeliveryRouteResponse;
+import com.hubdelivery.deliveryservice.delivery.infrastructure.kafka.DeliveryEventProducer;
 import com.hubdelivery.deliveryservice.deliverymanager.infrastructure.client.UserServiceClient;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,13 +39,25 @@ public class DeliveryService {
     private final DeliveryRouteRepository deliveryRouteRepository;
     private final UserServiceClient userServiceClient;
     private final DeliveryManagerService deliveryManagerService;
+    private final DeliveryEventProducer deliveryEventProducer;
 
     @Transactional
     public DeliveryResponse create(DeliveryCreateRequest request, String userId, UserRole role) {
         if (role != UserRole.MASTER) {
             throw new DeliveryException(DeliveryErrorCode.DELIVERY_FORBIDDEN);
         }
+        return createInternal(request);
+    }
 
+    // Kafka Consumer에서 역할 검증 없이 직접 호출하는 내부 생성 메서드
+    @Transactional
+    public void createFromEvent(OrderCreatedEvent event) {
+        DeliveryCreateRequest request = toDeliveryCreateRequest(event);
+        DeliveryResponse response = createInternal(request);
+        deliveryEventProducer.publishDeliveryCreated(event.getOrderId(), response.getId());
+    }
+
+    private DeliveryResponse createInternal(DeliveryCreateRequest request) {
         // 1. 목적지 허브 소속 COMPANY_DELIVERY_MANAGER 순환 배정
         UUID assignedManagerId = resolveCompanyDeliveryManager(request);
 
@@ -69,6 +83,30 @@ public class DeliveryService {
                 .toList();
 
         return DeliveryResponse.withRoutes(saved, routeResponses);
+    }
+
+    private DeliveryCreateRequest toDeliveryCreateRequest(OrderCreatedEvent event) {
+        List<DeliveryCreateRequest.RouteRequest> routes = event.getRoutes().stream()
+                .map(r -> DeliveryCreateRequest.RouteRequest.builder()
+                        .sequence(r.getSequence())
+                        .startHubId(r.getStartHubId())
+                        .endHubId(r.getEndHubId())
+                        .estimatedDistance(r.getEstimatedDistance())
+                        .estimatedDuration(r.getEstimatedDuration())
+                        .deliveryManagerId(r.getDeliveryManagerId())
+                        .build())
+                .toList();
+
+        return DeliveryCreateRequest.builder()
+                .orderId(event.getOrderId())
+                .startHubId(event.getStartHubId())
+                .endHubId(event.getEndHubId())
+                .address(event.getAddress())
+                .userId(event.getUserId())
+                .slackId(event.getSlackId())
+                .deliveryManagerId(event.getDeliveryManagerId())
+                .routes(routes)
+                .build();
     }
 
     @Transactional(readOnly = true)

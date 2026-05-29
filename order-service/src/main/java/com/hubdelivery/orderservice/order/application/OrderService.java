@@ -1,15 +1,17 @@
 package com.hubdelivery.orderservice.order.application;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hubdelivery.common.event.OrderCreatedEvent;
 import com.hubdelivery.common.response.PageResponse;
 import com.hubdelivery.common.security.UserRole;
 import com.hubdelivery.common.util.PageableUtils;
 import com.hubdelivery.orderservice.order.domain.entity.Order;
+import com.hubdelivery.orderservice.order.domain.entity.OutboxEvent;
 import com.hubdelivery.orderservice.order.domain.exception.OrderErrorCode;
 import com.hubdelivery.orderservice.order.domain.exception.OrderException;
 import com.hubdelivery.orderservice.order.domain.repository.OrderRepository;
-import com.hubdelivery.orderservice.order.infrastructure.client.delivery.DeliveryServiceClient;
-import com.hubdelivery.orderservice.order.infrastructure.client.delivery.dto.DeliveryCreateRequest;
-import com.hubdelivery.orderservice.order.infrastructure.client.delivery.dto.DeliveryCreateRequest.RouteRequest;
+import com.hubdelivery.orderservice.order.domain.repository.OutboxEventRepository;
 import com.hubdelivery.orderservice.order.infrastructure.client.product.ProductServiceClient;
 import com.hubdelivery.orderservice.order.infrastructure.client.user.UserServiceClient;
 import com.hubdelivery.orderservice.order.presentation.dto.OrderCreateRequest;
@@ -28,9 +30,10 @@ import org.springframework.transaction.annotation.Transactional;
 public class OrderService {
 
     private final OrderRepository orderRepository;
-    private final DeliveryServiceClient deliveryServiceClient;
+    private final OutboxEventRepository outboxEventRepository;
     private final ProductServiceClient productServiceClient;
     private final UserServiceClient userServiceClient;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public OrderResponse create(OrderCreateRequest request, String userId, UserRole role) {
@@ -49,13 +52,12 @@ public class OrderService {
 
         Order saved = orderRepository.save(order);
 
-        // 3. delivery-service 연동하여 배송 생성
-        try {
-            var deliveryResp = deliveryServiceClient.create(buildDeliveryRequest(saved.getId(), request));
-            saved.assignDelivery(deliveryResp.data().getId());
-        } catch (Exception e) {
-            throw new OrderException(OrderErrorCode.DELIVERY_CREATE_FAILED);
-        }
+        // 3. Outbox에 이벤트 저장 (같은 트랜잭션 — 배송 생성은 Kafka를 통해 비동기 처리)
+        outboxEventRepository.save(OutboxEvent.builder()
+                .eventType("ORDER_CREATED")
+                .aggregateId(saved.getId())
+                .payload(toJson(buildOrderCreatedEvent(saved.getId(), request)))
+                .build());
 
         return OrderResponse.from(saved);
     }
@@ -72,10 +74,8 @@ public class OrderService {
         UUID fixedProducerId = null;
 
         if (role == UserRole.HUB_MANAGER) {
-            // HUB_MANAGER: 담당 허브 주문만 조회
             fixedHubId = userServiceClient.getUser(UUID.fromString(userId)).data().getHubId();
         } else if (role == UserRole.DELIVERY_MANAGER || role == UserRole.COMPANY_MANAGER) {
-            // DELIVERY_MANAGER·COMPANY_MANAGER: 본인이 요청한 주문만 조회
             fixedProducerId = UUID.fromString(userId);
         }
 
@@ -120,10 +120,9 @@ public class OrderService {
                 .orElseThrow(() -> new OrderException(OrderErrorCode.ORDER_NOT_FOUND));
     }
 
-    /** OrderCreateRequest → DeliveryCreateRequest 변환 */
-    private DeliveryCreateRequest buildDeliveryRequest(UUID orderId, OrderCreateRequest req) {
-        List<RouteRequest> routes = req.getRoutes().stream()
-                .map(r -> RouteRequest.builder()
+    private OrderCreatedEvent buildOrderCreatedEvent(UUID orderId, OrderCreateRequest req) {
+        List<OrderCreatedEvent.RouteInfo> routes = req.getRoutes().stream()
+                .map(r -> OrderCreatedEvent.RouteInfo.builder()
                         .sequence(r.getSequence())
                         .startHubId(r.getStartHubId())
                         .endHubId(r.getEndHubId())
@@ -133,7 +132,7 @@ public class OrderService {
                         .build())
                 .toList();
 
-        return DeliveryCreateRequest.builder()
+        return OrderCreatedEvent.builder()
                 .orderId(orderId)
                 .startHubId(req.getStartHubId())
                 .endHubId(req.getEndHubId())
@@ -142,6 +141,14 @@ public class OrderService {
                 .slackId(req.getSlackId())
                 .routes(routes)
                 .build();
+    }
+
+    private String toJson(Object obj) {
+        try {
+            return objectMapper.writeValueAsString(obj);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("이벤트 직렬화 실패", e);
+        }
     }
 
     // -----------------------------------------------------------------------

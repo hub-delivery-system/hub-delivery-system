@@ -53,6 +53,41 @@ services:
     networks:
       - logistics-network
 
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: logistics-zookeeper
+    ports:
+      - "2181:2181"
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    restart: unless-stopped
+    networks:
+      - logistics-network
+
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: logistics-kafka
+    ports:
+      - "9092:9092"
+    depends_on:
+      - zookeeper
+    environment:
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+    networks:
+      - logistics-network
+
   # ------------------------------------------------------------------------
   # LAYER 2: Security & IAM (Keycloak)
   # ------------------------------------------------------------------------
@@ -182,9 +217,12 @@ services:
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${ORDER_DELIVERY_DB}
       EUREKA_SERVER_URL: ${EUREKA_SERVER_URL}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
     restart: unless-stopped
     depends_on:
       eureka-server:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
     networks:
       - logistics-network
@@ -195,9 +233,12 @@ services:
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${ORDER_DELIVERY_DB}
       EUREKA_SERVER_URL: ${EUREKA_SERVER_URL}
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
     restart: unless-stopped
     depends_on:
       eureka-server:
+        condition: service_healthy
+      kafka:
         condition: service_healthy
     networks:
       - logistics-network

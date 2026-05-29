@@ -1,32 +1,38 @@
-package com.hubdelivery.orderservice.order.infrastructure.client.delivery.dto;
+package com.hubdelivery.common.event;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 
 @Getter
 @Builder
-public class DeliveryCreateRequest {
+@NoArgsConstructor
+@AllArgsConstructor
+public class OrderCreatedEvent {
 
     private UUID orderId;
     private UUID startHubId;
     private UUID endHubId;
     private String address;
-    private UUID userId;       // 배송 수령인 userId
+    private UUID userId;
     private String slackId;
-    private UUID deliveryManagerId; // 수동 지정 시 사용 (선택)
-    private List<RouteRequest> routes;
+    private UUID deliveryManagerId;
+    private List<RouteInfo> routes;
 
     @Getter
     @Builder
-    public static class RouteRequest {
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class RouteInfo {
         private Integer sequence;
         private UUID startHubId;
         private UUID endHubId;
         private BigDecimal estimatedDistance;
         private Integer estimatedDuration;
-        private UUID deliveryManagerId; // 수동 지정 시 사용 (선택)
+        private UUID deliveryManagerId;
     }
 }

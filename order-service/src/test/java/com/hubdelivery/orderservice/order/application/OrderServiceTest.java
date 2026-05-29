@@ -1,14 +1,14 @@
 package com.hubdelivery.orderservice.order.application;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hubdelivery.common.response.ApiResponse;
 import com.hubdelivery.common.security.UserRole;
 import com.hubdelivery.orderservice.order.domain.entity.Order;
 import com.hubdelivery.orderservice.order.domain.exception.OrderErrorCode;
 import com.hubdelivery.orderservice.order.domain.exception.OrderException;
 import com.hubdelivery.orderservice.order.domain.repository.OrderRepository;
+import com.hubdelivery.orderservice.order.domain.repository.OutboxEventRepository;
 import com.hubdelivery.orderservice.order.domain.type.OrderStatus;
-import com.hubdelivery.orderservice.order.infrastructure.client.delivery.DeliveryServiceClient;
-import com.hubdelivery.orderservice.order.infrastructure.client.delivery.dto.DeliveryResponse;
 import com.hubdelivery.orderservice.order.infrastructure.client.product.ProductServiceClient;
 import com.hubdelivery.orderservice.order.infrastructure.client.product.dto.ProductResponse;
 import com.hubdelivery.orderservice.order.infrastructure.client.user.UserServiceClient;
@@ -21,6 +21,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
@@ -43,13 +44,16 @@ class OrderServiceTest {
     private OrderRepository orderRepository;
 
     @Mock
-    private DeliveryServiceClient deliveryServiceClient;
+    private OutboxEventRepository outboxEventRepository;
 
     @Mock
     private ProductServiceClient productServiceClient;
 
     @Mock
     private UserServiceClient userServiceClient;
+
+    @Spy
+    private ObjectMapper objectMapper;
 
     // -----------------------------------------------------------------------
     // 테스트 헬퍼
@@ -129,15 +133,13 @@ class OrderServiceTest {
     class CreateOrder {
 
         @Test
-        @DisplayName("주문 생성 시 배송이 함께 생성되고 deliveryId가 연결된다")
-        void create_success_withDeliveryLinked() {
+        @DisplayName("주문 생성 시 Outbox 이벤트가 저장된다")
+        void create_success_outboxEventSaved() {
             // given
             String userId = UUID.randomUUID().toString();
             UUID hubId = UUID.randomUUID();
-            UUID deliveryId = UUID.randomUUID();
             OrderCreateRequest request = buildCreateRequest();
 
-            // create()는 product-service에서 hubId를 조회한다
             ProductResponse productResp = mock(ProductResponse.class);
             given(productResp.getHubId()).willReturn(hubId);
             given(productServiceClient.getProduct(any())).willReturn(ApiResponse.ok(productResp));
@@ -145,11 +147,7 @@ class OrderServiceTest {
             Order savedOrder = buildOrder(UUID.randomUUID(), OrderStatus.PENDING,
                     UUID.fromString(userId), request.getProductId(), hubId);
             given(orderRepository.save(any())).willReturn(savedOrder);
-
-            DeliveryResponse deliveryResponse = mock(DeliveryResponse.class);
-            given(deliveryResponse.getId()).willReturn(deliveryId);
-            given(deliveryServiceClient.create(any()))
-                    .willReturn(ApiResponse.created(deliveryResponse));
+            given(outboxEventRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
 
             // when
             var response = orderService.create(request, userId, UserRole.COMPANY_MANAGER);
@@ -157,30 +155,8 @@ class OrderServiceTest {
             // then
             assertThat(response).isNotNull();
             assertThat(response.getStatus()).isEqualTo(OrderStatus.PENDING);
-        }
-
-        @Test
-        @DisplayName("배송 생성 실패 시 DELIVERY_CREATE_FAILED 예외 발생")
-        void create_deliveryFailed_throwsException() {
-            // given
-            String userId = UUID.randomUUID().toString();
-            UUID hubId = UUID.randomUUID();
-            OrderCreateRequest request = buildCreateRequest();
-
-            ProductResponse productResp = mock(ProductResponse.class);
-            given(productResp.getHubId()).willReturn(hubId);
-            given(productServiceClient.getProduct(any())).willReturn(ApiResponse.ok(productResp));
-
-            Order savedOrder = buildOrder(UUID.randomUUID(), OrderStatus.PENDING,
-                    UUID.fromString(userId), request.getProductId(), hubId);
-            given(orderRepository.save(any())).willReturn(savedOrder);
-            given(deliveryServiceClient.create(any())).willThrow(new RuntimeException("연결 실패"));
-
-            // when & then
-            assertThatThrownBy(() -> orderService.create(request, userId, UserRole.COMPANY_MANAGER))
-                    .isInstanceOf(OrderException.class)
-                    .extracting("errorCode")
-                    .isEqualTo(OrderErrorCode.DELIVERY_CREATE_FAILED);
+            // deliveryId는 Kafka 비동기 처리 전이므로 null
+            assertThat(response.getDeliveryId()).isNull();
         }
     }
 
