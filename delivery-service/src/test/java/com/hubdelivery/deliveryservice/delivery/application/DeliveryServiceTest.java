@@ -12,6 +12,7 @@ import com.hubdelivery.deliveryservice.delivery.presentation.dto.DeliveryUpdateR
 import com.hubdelivery.deliveryservice.deliverymanager.application.DeliveryManagerService;
 import com.hubdelivery.deliveryservice.deliverymanager.domain.entity.DeliveryManager;
 import com.hubdelivery.deliveryservice.deliverymanager.domain.type.DeliveryManagerType;
+import com.hubdelivery.deliveryservice.delivery.infrastructure.kafka.DeliveryEventProducer;
 import com.hubdelivery.deliveryservice.deliverymanager.infrastructure.client.UserServiceClient;
 import com.hubdelivery.deliveryservice.deliverymanager.infrastructure.client.dto.UserResponse;
 import com.hubdelivery.deliveryservice.deliverymanager.presentation.dto.DeliveryManagerResponse;
@@ -40,7 +41,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class DeliveryServiceTest {
@@ -59,6 +62,9 @@ class DeliveryServiceTest {
 
     @Mock
     private DeliveryManagerService deliveryManagerService;
+
+    @Mock
+    private DeliveryEventProducer deliveryEventProducer;
 
     // -----------------------------------------------------------------------
     // 테스트 헬퍼
@@ -327,6 +333,61 @@ class DeliveryServiceTest {
 
             // then
             assertThat(response.getStatus()).isEqualTo(DeliveryStatus.DELIVERED);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // 주문 취소 연동 테스트
+    // -----------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("주문 취소 연동")
+    class CancelByOrderId {
+
+        @Test
+        @DisplayName("orderId에 해당하는 배송과 경로가 소프트 딜리트된다")
+        void cancelByOrderId_success_softDeletesDeliveryAndRoutes() {
+            // given
+            UUID orderId = UUID.randomUUID();
+            UUID deliveryId = UUID.randomUUID();
+            Delivery delivery = buildDelivery(deliveryId, DeliveryStatus.HUB_PENDING,
+                    UUID.randomUUID(), UUID.randomUUID(), null);
+
+            DeliveryRoute route = DeliveryRoute.builder()
+                    .deliveryId(deliveryId)
+                    .sequence(1)
+                    .startHubId(UUID.randomUUID())
+                    .endHubId(UUID.randomUUID())
+                    .status(DeliveryRouteStatus.WAITING_AT_HUB)
+                    .build();
+
+            given(deliveryRepository.findByOrderIdAndDeletedAtIsNull(orderId))
+                    .willReturn(Optional.of(delivery));
+            given(deliveryRouteRepository.findAllByDeliveryIdAndDeletedAtIsNullOrderBySequenceAsc(deliveryId))
+                    .willReturn(List.of(route));
+
+            // when
+            deliveryService.cancelByOrderId(orderId);
+
+            // then: 배송과 경로 모두 소프트 딜리트 확인
+            assertThat(delivery.getDeletedAt()).isNotNull();
+            assertThat(route.getDeletedAt()).isNotNull();
+        }
+
+        @Test
+        @DisplayName("orderId에 해당하는 배송이 없으면 아무 동작도 하지 않는다")
+        void cancelByOrderId_noDelivery_doesNothing() {
+            // given
+            UUID orderId = UUID.randomUUID();
+            given(deliveryRepository.findByOrderIdAndDeletedAtIsNull(orderId))
+                    .willReturn(Optional.empty());
+
+            // when
+            deliveryService.cancelByOrderId(orderId);
+
+            // then
+            then(deliveryRouteRepository).should(never())
+                    .findAllByDeliveryIdAndDeletedAtIsNullOrderBySequenceAsc(any());
         }
     }
 
