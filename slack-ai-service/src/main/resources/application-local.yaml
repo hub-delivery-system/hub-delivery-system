@@ -1,5 +1,5 @@
 server:
-  port: 19095
+  port: 19070
 
 spring:
   application:
@@ -8,8 +8,8 @@ spring:
   datasource:
     driver-class-name: org.postgresql.Driver
     url: ${DB_URL:jdbc:postgresql://localhost:5432/slack_ai_db}
-    username: ${DB_USERNAME:hub}
-    password: ${DB_PASSWORD:hub}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:change-me}
 
   jpa:
     database: postgresql
@@ -26,6 +26,19 @@ spring:
     init:
       mode: never
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    consumer:
+      group-id: slack-ai-service
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
 eureka:
   client:
     service-url:
@@ -40,6 +53,20 @@ slack:
 ai:
   gemini:
     api-key: ${AI_API_KEY:test-key}
+
+naver:
+  directions:
+    client-id: ${NAVER_DIRECTIONS_CLIENT_ID:test-id}
+    client-secret: ${NAVER_DIRECTIONS_CLIENT_SECRET:test-secret}
+    base-url: https://naveropenapi.apigw.ntruss.com/map-direction/v1
+
+scheduler:
+  daily-alert:
+    cron: "0 0 6 * * *"
+
+kafka:
+  topic:
+    order-created: order.created
 
 springdoc:
   api-docs:
