@@ -6,6 +6,7 @@ import com.hubdelivery.hub.domain.type.UserRole;
 import com.hubdelivery.hubtohub.application.dto.ResGetHubTransferDto;
 import com.hubdelivery.hubtohub.application.service.HubTransferService;
 import com.hubdelivery.hubtohub.presentation.dto.ReqCreateHubTransferDto;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -41,7 +42,7 @@ public class HubTransferController {
     public ApiResponse<ResGetHubTransferDto> createHubTransfer(
             @RequestHeader("X-User-Id") UUID userId,
             @RequestHeader("X-Role") UserRole userRole,
-            @RequestBody ReqCreateHubTransferDto request) {
+            @Valid @RequestBody ReqCreateHubTransferDto request) {
         log.info("Hub 이동 경로 생성 요청 - from: {}, to: {}", request.getFromHubId(), request.getToHubId());
 
         ResGetHubTransferDto responseDto = hubTransferService.createHubTransfer(

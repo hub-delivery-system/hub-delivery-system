@@ -15,10 +15,6 @@ import java.util.UUID;
 @Repository
 public interface CentralHubRepository extends JpaRepository<CentralHubEntity, UUID> {
 
-    /**
-     * Hub ID로 중앙허브 조회
-     */
-    Optional<CentralHubEntity> findByHubId(UUID hubId);
 
     /**
      * 모든 중앙허브 조회
