@@ -34,6 +34,11 @@ dependencies {
     // Kafka
     implementation 'org.springframework.kafka:spring-kafka'
 
+    // ✅ Circuit Breaker - Resilience4j
+    implementation 'org.springframework.cloud:spring-cloud-starter-circuitbreaker-resilience4j'
+    // ✅ Actuator - Circuit Breaker 상태 모니터링용
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+
     runtimeOnly 'org.postgresql:postgresql'
     implementation project(':common-module')
 

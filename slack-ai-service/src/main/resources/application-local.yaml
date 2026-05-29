@@ -86,3 +86,58 @@ management:
   zipkin:
     tracing:
       enabled: false
+  # ✅ Actuator로 Circuit Breaker 상태 확인 가능하게 노출
+  endpoints:
+    web:
+      exposure:
+        include: health,circuitbreakers
+  health:
+    circuitbreakers:
+      enabled: true
+
+# ✅ Resilience4j Circuit Breaker 설정
+resilience4j:
+  circuitbreaker:
+    instances:
+
+      # --- Gemini AI API ---
+      gemini:
+        # 슬라이딩 윈도우: 최근 10번 호출 기준으로 실패율 계산
+        slidingWindowSize: 10
+        # 실패율 50% 이상이면 OPEN
+        failureRateThreshold: 50
+        # OPEN 상태 유지 시간: 30초 후 HALF_OPEN으로 전환
+        waitDurationInOpenState: 30s
+        # HALF_OPEN에서 허용할 테스트 호출 수
+        permittedNumberOfCallsInHalfOpenState: 3
+        # Circuit Breaker를 활성화하기 위한 최소 호출 수
+        minimumNumberOfCalls: 5
+        # ✅ 아래 예외들을 "실패"로 카운트
+        recordExceptions:
+          - java.lang.RuntimeException
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+
+      # --- Naver Directions API ---
+      naver:
+        slidingWindowSize: 10
+        failureRateThreshold: 50
+        waitDurationInOpenState: 20s
+        permittedNumberOfCallsInHalfOpenState: 3
+        minimumNumberOfCalls: 5
+        recordExceptions:
+          - java.lang.RuntimeException
+          - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
+
+      # --- Slack API ---
+      # Slack은 메시지 전송이 핵심 기능이므로 임계값을 좀 더 관대하게
+      slack:
+        slidingWindowSize: 10
+        # 실패율 60% 이상이면 OPEN (Slack은 일시적 오류가 잦음)
+        failureRateThreshold: 60
+        waitDurationInOpenState: 60s
+        permittedNumberOfCallsInHalfOpenState: 5
+        minimumNumberOfCalls: 5
+        recordExceptions:
+          - java.lang.RuntimeException
