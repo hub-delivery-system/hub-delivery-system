@@ -1,0 +1,57 @@
+{
+  "realm": "hub-delivery",
+  "enabled": true,
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": false,
+  "bruteForceProtected": false,
+  "roles": {
+    "realm": [
+      { "name": "MASTER", "composite": false },
+      { "name": "HUB_MANAGER", "composite": false },
+      { "name": "DELIVERY_MANAGER", "composite": false },
+      { "name": "COMPANY_MANAGER", "composite": false }
+    ]
+  },
+  "clients": [
+    {
+      "clientId": "hub-delivery-client",
+      "enabled": true,
+      "publicClient": true,
+      "directAccessGrantsEnabled": true,
+      "standardFlowEnabled": false,
+      "protocol": "openid-connect"
+    }
+  ],
+  "users": [
+    {
+      "username": "master",
+      "enabled": true,
+      "email": "master@hub-delivery.com",
+      "credentials": [{ "type": "password", "value": "master123", "temporary": false }],
+      "realmRoles": ["MASTER"]
+    },
+    {
+      "username": "hub-manager",
+      "enabled": true,
+      "email": "hub-manager@hub-delivery.com",
+      "credentials": [{ "type": "password", "value": "test1234", "temporary": false }],
+      "realmRoles": ["HUB_MANAGER"]
+    },
+    {
+      "username": "delivery-manager",
+      "enabled": true,
+      "email": "delivery-manager@hub-delivery.com",
+      "credentials": [{ "type": "password", "value": "test1234", "temporary": false }],
+      "realmRoles": ["DELIVERY_MANAGER"]
+    },
+    {
+      "username": "company-manager",
+      "enabled": true,
+      "email": "company-manager@hub-delivery.com",
+      "credentials": [{ "type": "password", "value": "test1234", "temporary": false }],
+      "realmRoles": ["COMPANY_MANAGER"]
+    }
+  ]
+}
