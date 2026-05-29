@@ -16,7 +16,6 @@ import com.hubdelivery.common.security.UserRole;
 import com.hubdelivery.user.domain.entity.User;
 import com.hubdelivery.user.domain.repository.UserRepository;
 import com.hubdelivery.user.domain.type.UserStatus;
-import com.hubdelivery.user.presentation.dto.request.UserApproveRequest;
 import com.hubdelivery.user.presentation.dto.request.UserUpdateRequest;
 import com.hubdelivery.user.presentation.dto.response.UserApproveResponse;
 import com.hubdelivery.user.presentation.dto.response.UserRejectResponse;
@@ -28,9 +27,11 @@ import com.hubdelivery.user.presentation.dto.response.UserResponse;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final UserAffiliationResolverService userAffiliationResolverService;
+    private final UserProvisioningService userProvisioningService;
 
     @Transactional
-    public UserApproveResponse approve(UUID userId, UserApproveRequest request) {
+    public UserApproveResponse approve(UUID userId) {
         User user = findActiveUser(userId);
 
         if (user.getStatus() != UserStatus.PENDING) {
@@ -43,14 +44,18 @@ public class UserService {
         }
 
         UserRole mappedRole = requestedRole.toUserRole();
-        UUID hubId = request.hubId();
-        UUID companyId = request.companyId();
+        UserAffiliationResolverService.ResolvedOrganization org =
+                userAffiliationResolverService.resolve(requestedRole, user.getAffiliationName());
+
+        UUID hubId = org.hubId();
+        UUID companyId = org.companyId();
 
         validateOrgByRole(mappedRole, requestedRole, hubId, companyId);
         user.approve(mappedRole, hubId, companyId);
+        userProvisioningService.provisionApprovedUser(user);
 
-        // TODO: affiliationName + requestedRole 기반으로 hubId/companyId 자동 조회 연동
-        // TODO: 승인 시 Keycloak 사용자 생성/활성화 + role 부여
+        // TODO: 배송 담당자 승인 시 정원 체크
+        // TODO: 배송 담당자 승인 시 delivery-service 레코드 생성
 
         return new UserApproveResponse(
                 user.getId(),

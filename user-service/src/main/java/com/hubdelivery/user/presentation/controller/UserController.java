@@ -19,7 +19,6 @@ import lombok.RequiredArgsConstructor;
 
 import com.hubdelivery.common.response.ApiResponse;
 import com.hubdelivery.user.application.service.UserService;
-import com.hubdelivery.user.presentation.dto.request.UserApproveRequest;
 import com.hubdelivery.user.presentation.dto.request.UserUpdateRequest;
 import com.hubdelivery.user.presentation.dto.response.UserApproveResponse;
 import com.hubdelivery.user.presentation.dto.response.UserRejectResponse;
@@ -35,10 +34,9 @@ public class UserController {
     @PatchMapping("/{userId}/approve")
     @PreAuthorize("hasAnyRole('MASTER', 'HUB_MANAGER')")
     public ApiResponse<UserApproveResponse> approve(
-            @PathVariable UUID userId,
-            @Valid @RequestBody UserApproveRequest request
+            @PathVariable UUID userId
     ) {
-        return ApiResponse.ok(userService.approve(userId, request));
+        return ApiResponse.ok(userService.approve(userId));
     }
 
     @PatchMapping("/{userId}/reject")
