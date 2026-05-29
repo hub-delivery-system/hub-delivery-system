@@ -185,6 +185,27 @@ public class KeycloakAdminUserClient {
         }
     }
 
+    public void deleteUser(String adminAccessToken, String userId) {
+        try {
+            restClient.delete()
+                    .uri(usersUri() + "/" + userId)
+                    .headers(headers -> headers.setBearerAuth(adminAccessToken))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientResponseException e) {
+            if (e.getStatusCode().value() == 404) {
+                return;
+            }
+
+            log.error("Failed to delete Keycloak user. userId={}, status={}, body={}",
+                    userId, e.getStatusCode().value(), e.getResponseBodyAsString());
+            throw new KeycloakUnavailableException();
+        } catch (RestClientException e) {
+            log.error("Failed to delete Keycloak user. userId={}", userId, e);
+            throw new KeycloakUnavailableException();
+        }
+    }
+
     private KeycloakRealmRoleRepresentation getRealmRole(String adminAccessToken, String roleName) {
         String uri = UriComponentsBuilder.fromHttpUrl(realmRolesUri())
                 .pathSegment(roleName)

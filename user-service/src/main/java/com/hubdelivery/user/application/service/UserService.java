@@ -10,6 +10,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.util.StringUtils;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import com.hubdelivery.auth.domain.type.RequestedRole;
 import com.hubdelivery.common.exception.CommonErrorCode;
@@ -23,6 +24,7 @@ import com.hubdelivery.user.presentation.dto.response.UserApproveResponse;
 import com.hubdelivery.user.presentation.dto.response.UserRejectResponse;
 import com.hubdelivery.user.presentation.dto.response.UserResponse;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -55,8 +57,14 @@ public class UserService {
 
         validateOrgByRole(mappedRole, requestedRole, hubId, companyId);
         user.approve(mappedRole, hubId, companyId);
-        userProvisioningService.provisionApprovedUser(user);
-        deliveryManagerProvisionService.provisionIfRequired(user);
+
+        try {
+            userProvisioningService.provisionApprovedUser(user);
+            deliveryManagerProvisionService.provisionIfRequired(user);
+        } catch (RuntimeException ex) {
+            compensateProvisioning(user, ex);
+            throw ex;
+        }
 
         return new UserApproveResponse(
                 user.getId(),
@@ -265,6 +273,15 @@ public class UserService {
             UUID hubId,
             UUID companyId
     ) {
+    }
+
+    private void compensateProvisioning(User user, RuntimeException originalException) {
+        try {
+            userProvisioningService.compensateProvisioning(user);
+        } catch (RuntimeException compensationException) {
+            log.error("승인 보상 처리 실패. userId={}", user.getId(), compensationException);
+            originalException.addSuppressed(compensationException);
+        }
     }
 
     private void validateRequestedOrganization(UUID requested, UUID resolved, String fieldName) {

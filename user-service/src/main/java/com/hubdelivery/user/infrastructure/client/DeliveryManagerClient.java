@@ -2,6 +2,7 @@ package com.hubdelivery.user.infrastructure.client;
 
 import java.util.UUID;
 
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -44,6 +45,7 @@ public class DeliveryManagerClient {
         try {
             restClient.post()
                     .uri(uri)
+                    .contentType(MediaType.APPLICATION_JSON)
                     .header("X-User-Id", SYSTEM_USER_ID)
                     .header("X-Role", SYSTEM_ROLE)
                     .body(new DeliveryManagerCreateRequest(userId, hubId, companyId, type))

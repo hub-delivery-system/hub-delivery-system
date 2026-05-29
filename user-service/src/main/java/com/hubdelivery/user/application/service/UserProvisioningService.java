@@ -37,6 +37,22 @@ public class UserProvisioningService {
                 user.getId(), keycloakUserId, user.getRole());
     }
 
+    public void compensateProvisioning(User user) {
+        if (user == null || !StringUtils.hasText(user.getSlackId())) {
+            return;
+        }
+
+        String adminAccessToken = keycloakAdminTokenClient.issueAdminAccessToken();
+        String keycloakUsername = user.getSlackId();
+
+        keycloakAdminUserClient.findUserIdByUsername(adminAccessToken, keycloakUsername)
+                .ifPresent(keycloakUserId -> {
+                    keycloakAdminUserClient.deleteUser(adminAccessToken, keycloakUserId);
+                    log.info("Keycloak compensation completed. userId={}, keycloakUserId={}",
+                            user.getId(), keycloakUserId);
+                });
+    }
+
     private void validate(User user) {
         if (user == null) {
             throw new CommonException(CommonErrorCode.INVALID_INPUT_VALUE, "승인 사용자 정보가 없습니다.");
