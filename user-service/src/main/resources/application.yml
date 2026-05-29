@@ -4,19 +4,15 @@ server:
 spring:
   application:
     name: user-service
+  profiles:
+    active: local
 
   datasource:
     driver-class-name: org.postgresql.Driver
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/hub_user}
-    username: ${DB_USERNAME:hub}
-    password: ${DB_PASSWORD:hub}
 
   jpa:
     database: postgresql
     database-platform: org.hibernate.dialect.PostgreSQLDialect
-    hibernate:
-      ddl-auto: update
-    show-sql: true
     open-in-view: false
     properties:
       hibernate:
@@ -31,8 +27,34 @@ eureka:
     enabled: false
 
 keycloak:
-  base-url: ${KEYCLOAK_BASE_URL:http://localhost:8080}
-  realm: ${KEYCLOAK_REALM:master}
+  base-url: ${KEYCLOAK_BASE_URL:http://keycloak:8080}
+  realm: ${KEYCLOAK_REALM:hub-delivery}
   client-id: ${KEYCLOAK_CLIENT_ID:hub-delivery-client}
-  # 보안상 실제 secret은 환경변수로만 주입
   client-secret: ${KEYCLOAK_CLIENT_SECRET:}
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${USER_DB:user_db}
+    username: ${POSTGRES_USER:hub}
+    password: ${POSTGRES_PASSWORD:hub}
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: docker
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:postgres}:${DB_PORT:5432}/${USER_DB:user_db}
+    username: ${POSTGRES_USER:postgres}
+    password: ${POSTGRES_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      ddl-auto: validate
