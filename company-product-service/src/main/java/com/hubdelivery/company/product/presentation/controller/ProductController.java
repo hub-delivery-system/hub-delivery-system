@@ -5,23 +5,14 @@ import com.hubdelivery.common.response.PageResponse;
 import com.hubdelivery.common.security.UserRole;
 import com.hubdelivery.company.product.application.service.ProductService;
 import com.hubdelivery.company.product.presentation.dto.request.ProductCreateRequestDto;
+import com.hubdelivery.company.product.presentation.dto.request.ProductStockUpdateRequestDto;
 import com.hubdelivery.company.product.presentation.dto.request.ProductUpdateRequestDto;
 import com.hubdelivery.company.product.presentation.dto.response.ProductResponseDto;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestHeader;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.ResponseStatus;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
@@ -88,5 +79,31 @@ public class ProductController implements ProductControllerDocs {
     ) {
         productService.deleteProduct(userId, userRole, productId);
         return ApiResponse.ok(null);
+    }
+
+    /** 상품 재고 감소 API */
+    @PatchMapping("/{productId}/stock/decrease")
+    @PreAuthorize("hasAnyRole('MASTER', 'HUB_MANAGER', 'COMPANY_MANAGER')")
+    @Override
+    public ApiResponse<ProductResponseDto> decreaseStock(
+            @RequestHeader(X_USER_ID) UUID userId,
+            @RequestHeader(X_ROLE) UserRole userRole,
+            @PathVariable UUID productId,
+            @Valid @RequestBody ProductStockUpdateRequestDto request
+    ) {
+        return ApiResponse.ok(productService.decreaseStock(userId, userRole, productId, request));
+    }
+
+    /** 상품 재고 증가 API */
+    @PatchMapping("/{productId}/stock/increase")
+    @PreAuthorize("hasAnyRole('MASTER', 'HUB_MANAGER', 'COMPANY_MANAGER')")
+    @Override
+    public ApiResponse<ProductResponseDto> increaseStock(
+            @RequestHeader(X_USER_ID) UUID userId,
+            @RequestHeader(X_ROLE) UserRole userRole,
+            @PathVariable UUID productId,
+            @Valid @RequestBody ProductStockUpdateRequestDto request
+    ) {
+        return ApiResponse.ok(productService.increaseStock(userId, userRole, productId, request));
     }
 }

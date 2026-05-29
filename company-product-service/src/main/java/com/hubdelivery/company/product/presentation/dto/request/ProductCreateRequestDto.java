@@ -4,6 +4,7 @@ import com.hubdelivery.company.product.domain.entity.Product;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.PositiveOrZero;
 import jakarta.validation.constraints.Size;
 
 import java.util.UUID;
@@ -22,7 +23,12 @@ public record ProductCreateRequestDto(
 
         @Schema(name = "company_id", description = "업체 ID", example = "d4e5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f9a")
         @NotNull(message = "업체 ID는 필수입니다.")
-        UUID companyId
+        UUID companyId,
+
+        @Schema(name = "stock_quantity", description = "상품 재고 수량", example = "100")
+        @NotNull(message = "상품 재고 수량은 필수입니다.")
+        @PositiveOrZero(message = "상품 재고 수량은 0 이상이어야 합니다.")
+        Integer stockQuantity
 ) {
 
     public Product toEntity() {
@@ -30,6 +36,7 @@ public record ProductCreateRequestDto(
                 .productName(productName)
                 .hubId(hubId)
                 .companyId(companyId)
+                .stockQuantity(stockQuantity)
                 .build();
     }
 }

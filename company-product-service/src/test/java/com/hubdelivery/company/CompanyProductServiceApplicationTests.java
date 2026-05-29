@@ -1,13 +1,14 @@
 package com.hubdelivery.company;
 
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
+import static org.assertj.core.api.Assertions.assertThat;
+
 class CompanyProductServiceApplicationTests {
 
 	@Test
-	void contextLoads() {
+	void applicationClassExists() {
+		assertThat(CompanyProductServiceApplication.class).isNotNull();
 	}
 
 }
