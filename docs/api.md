@@ -5,13 +5,15 @@
 각 서비스는 SpringDoc OpenAPI를 통해 Swagger UI를 제공합니다.
 모든 요청은 API Gateway(`http://localhost:19010`)를 통해 라우팅됩니다.
 
-| 서비스 | Swagger UI |
-|--------|-----------|
-| gateway-service | `http://localhost:19010/swagger-ui.html` |
-| delivery-service | `http://localhost:19010/delivery-service/swagger-ui.html` |
-| slack-ai-service | `http://localhost:19010/slack-ai-service/swagger-ui.html` |
-
-> 개별 서비스 포트로 직접 접근도 가능합니다 (로컬 개발 시).
+| 서비스                     | Swagger UI                                                       |
+|-------------------------|------------------------------------------------------------------|
+| gateway-service         | `http://localhost:19010/swagger-ui.html`                         |
+| user-service            | `http://localhost:19010/user-service/swagger-ui.html`            |
+| hub-service             | `http://localhost:19010/hub-service/swagger-ui.html`             |
+| company-product-service | `http://localhost:19010/company-product-service/swagger-ui.html` |
+| order-service           | `http://localhost:19010/order-service/swagger-ui.html`           |
+| delivery-service        | `http://localhost:19010/delivery-service/swagger-ui.html`        |
+| slack-ai-service        | `http://localhost:19010/slack-ai-service/swagger-ui.html`        |
 
 ---
 
