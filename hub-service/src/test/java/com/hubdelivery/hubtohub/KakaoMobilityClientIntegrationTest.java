@@ -3,7 +3,8 @@ package com.hubdelivery.hubtohub;
 import com.hubdelivery.hub.domain.entity.HubEntity;
 import com.hubdelivery.hub.domain.repository.HubRepository;
 import com.hubdelivery.hubtohub.application.service.HubRouteService;
-import com.hubdelivery.hubtohub.domain.repository.HubToHubRepository;
+import com.hubdelivery.hubtohub.domain.repository.HubTransferRepository;
+import com.hubdelivery.hubtohub.infrastructure.client.kakao.response.DirectionsResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -15,6 +16,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -30,7 +32,7 @@ class KakaoMobilityClientIntegrationTest {
     private HubRepository hubRepository;
 
     @Autowired
-    private HubToHubRepository hubRouteRepository;
+    private HubTransferRepository hubRouteRepository;
 
     private HubEntity seoulHub;
     private HubEntity incheonHub;
@@ -94,49 +96,80 @@ class KakaoMobilityClientIntegrationTest {
         @Test
         @DisplayName("같은 권역 허브 간 실제 경로 계산 (서울 → 인천)")
         void calculateRoute_SameRegion_RealCall() {
-            // when - Mock 없이 실제 빈(HubRouteService -> RestClient -> Kakao API) 호출
-            HubRouteService.RouteInfo result = hubRouteService.calculateRoute(seoulHub, incheonHub);
+            // When - Mock 없이 실제 빈(HubRouteService -> RestClient -> Kakao API) 호출
+            DirectionsResponse result = hubRouteService.calculateRoute(seoulHub, incheonHub);
 
-            // then
+            // Then
             assertThat(result).isNotNull();
-            assertThat(result.distanceKm()).isGreaterThan(BigDecimal.ZERO);
-            assertThat(result.durationMinutes()).isGreaterThan(0);
+            assertThat(result.getRoutes()).isNotEmpty();
+
+            var route = result.getRoutes().get(0);
+            assertThat(route).isNotNull();
+            assertThat(route.getSummary()).isNotNull();
+            assertThat(route.getSummary().getDistance()).isGreaterThan(0);
+            assertThat(route.getSummary().getDuration()).isGreaterThan(0);
+
+            // 거리와 시간 계산
+            BigDecimal distanceKm = BigDecimal.valueOf(route.getSummary().getDistance())
+                    .divide(BigDecimal.valueOf(1000), 2, RoundingMode.HALF_UP);
+            int durationMinutes = route.getSummary().getDuration() / 60;
 
             System.out.println("====== [통합 테스트 결과: 서울 -> 인천] ======");
-            System.out.println("📏 실제 계산 거리: " + result.distanceKm() + " km");
-            System.out.println("⏱️ 실제 소요 시간: " + result.durationMinutes() + " 분");
+            System.out.println("📏 실제 계산 거리: " + distanceKm + " km");
+            System.out.println("⏱️ 실제 소요 시간: " + durationMinutes + " 분");
+            System.out.println("=====================================");
         }
 
         @Test
         @DisplayName("다른 권역 허브 간 실제 Hub and Spoke 경로 계산 (서울 → 부산)")
         void calculateRoute_DifferentRegion_RealCall() {
             // when - 서울 -> (경기남부 허브 -> 대구 허브 경유 예상) -> 부산 경로 계산 실행
-            HubRouteService.RouteInfo result = hubRouteService.calculateRoute(seoulHub, busanHub);
+            DirectionsResponse result = hubRouteService.calculateRoute(seoulHub, busanHub);
+
+            // Then
+            assertThat(result).isNotNull();
+            assertThat(result.getRoutes()).isNotEmpty();
+
+            var route = result.getRoutes().get(0);
+            assertThat(route).isNotNull();
+            assertThat(route.getSummary()).isNotNull();
+            assertThat(route.getSummary().getDistance()).isGreaterThan(0);
+            assertThat(route.getSummary().getDuration()).isGreaterThan(0);
+
+            // 거리와 시간 계산
+            BigDecimal distanceKm = BigDecimal.valueOf(route.getSummary().getDistance())
+                    .divide(BigDecimal.valueOf(1000), 2, RoundingMode.HALF_UP);
+            int durationMinutes = route.getSummary().getDuration() / 60;
 
             // then
             assertThat(result).isNotNull();
             // 서울-부산은 최소 300km 이상이므로 비즈니스 로직 및 API 연동 결과 검증
-            assertThat(result.distanceKm()).isGreaterThan(new BigDecimal("300.00"));
-            assertThat(result.durationMinutes()).isGreaterThan(180); // 3시간 이상
+            assertThat(distanceKm).isGreaterThan(new BigDecimal("300.00"));
+            assertThat(durationMinutes).isGreaterThan(180); // 3시간 이상
 
             System.out.println("====== [통합 테스트 결과: 서울 -> 부산] ======");
-            System.out.println("📏 실제 경유 거리: " + result.distanceKm() + " km");
-            System.out.println("⏱️ 실제 경유 시간: " + result.durationMinutes() + " 분");
+            System.out.println("📏 실제 경유 거리: " + distanceKm + " km");
+            System.out.println("⏱️ 실제 경유 시간: " + durationMinutes + " 분");
         }
 
         @Test
         @DisplayName("대전 → 부산 실제 경로 계산")
         void calculateRoute_DaejeonToBusan_RealCall() {
             // when
-            HubRouteService.RouteInfo result = hubRouteService.calculateRoute(daejeonHub, busanHub);
+            DirectionsResponse result = hubRouteService.calculateRoute(daejeonHub, busanHub);
+
+            var route = result.getRoutes().get(0);
+            BigDecimal distanceKm = BigDecimal.valueOf(route.getSummary().getDistance())
+                    .divide(BigDecimal.valueOf(1000), 2, RoundingMode.HALF_UP);
+            int durationMinutes = route.getSummary().getDuration() / 60;
 
             // then
             assertThat(result).isNotNull();
-            assertThat(result.distanceKm()).isGreaterThan(new BigDecimal("200.00"));
+            assertThat(distanceKm).isGreaterThan(new BigDecimal("200.00"));
 
             System.out.println("====== [통합 테스트 결과: 대전 -> 부산] ======");
-            System.out.println("📏 실제 계산 거리: " + result.distanceKm() + " km");
-            System.out.println("⏱️ 실제 소요 시간: " + result.durationMinutes() + " 분");
+            System.out.println("📏 실제 계산 거리: " + distanceKm + " km");
+            System.out.println("⏱️ 실제 소요 시간: " + durationMinutes + " 분");
         }
     }
 }

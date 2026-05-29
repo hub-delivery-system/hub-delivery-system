@@ -21,6 +21,9 @@ public record ProductResponseDto(
         @Schema(name = "company_id", description = "업체 ID", example = "d4e5f6a7-8b9c-0d1e-2f3a-4b5c6d7e8f9a")
         UUID companyId,
 
+        @Schema(name = "stock_quantity", description = "상품 재고 수량", example = "100")
+        int stockQuantity,
+
         @Schema(name = "created_at", description = "생성 일시", example = "2026-05-22T10:15:30")
         LocalDateTime createdAt,
 
@@ -40,6 +43,7 @@ public record ProductResponseDto(
                 product.getProductName(),
                 product.getHubId(),
                 product.getCompanyId(),
+                product.getStockQuantity(),
                 product.getCreatedAt(),
                 product.getCreatedBy(),
                 product.getUpdatedAt(),
