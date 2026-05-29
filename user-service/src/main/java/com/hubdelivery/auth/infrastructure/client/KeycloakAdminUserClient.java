@@ -25,6 +25,8 @@ import com.hubdelivery.auth.domain.exception.KeycloakUnavailableException;
 public class KeycloakAdminUserClient {
 
     private static final String MASTER_REALM = "master";
+    private static final String DEFAULT_LAST_NAME = "user";
+    private static final String DEFAULT_EMAIL_DOMAIN = "@hub-delivery.local";
 
     private final KeycloakProperties keycloakProperties;
     private final RestClient restClient = RestClient.create();
@@ -65,11 +67,20 @@ public class KeycloakAdminUserClient {
 
     public String createUser(String adminAccessToken, String username) {
         try {
+            KeycloakUserProfile profile = buildUserProfile(username);
+
             ResponseEntity<Void> response = restClient.post()
                     .uri(usersUri())
                     .headers(headers -> headers.setBearerAuth(adminAccessToken))
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(new KeycloakCreateUserRequest(username, true))
+                    .body(new KeycloakUpsertUserRequest(
+                            username,
+                            true,
+                            true,
+                            profile.email(),
+                            profile.firstName(),
+                            profile.lastName()
+                    ))
                     .retrieve()
                     .toBodilessEntity();
 
@@ -95,13 +106,22 @@ public class KeycloakAdminUserClient {
         }
     }
 
-    public void enableUser(String adminAccessToken, String userId) {
+    public void enableUser(String adminAccessToken, String userId, String username) {
         try {
+            KeycloakUserProfile profile = buildUserProfile(username);
+
             restClient.put()
                     .uri(usersUri() + "/" + userId)
                     .headers(headers -> headers.setBearerAuth(adminAccessToken))
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(new KeycloakEnableUserRequest(true))
+                    .body(new KeycloakUpsertUserRequest(
+                            username,
+                            true,
+                            true,
+                            profile.email(),
+                            profile.firstName(),
+                            profile.lastName()
+                    ))
                     .retrieve()
                     .toBodilessEntity();
         } catch (RestClientResponseException e) {
@@ -112,6 +132,17 @@ public class KeycloakAdminUserClient {
             log.error("Failed to enable Keycloak user. userId={}", userId, e);
             throw new KeycloakUnavailableException();
         }
+    }
+
+    private KeycloakUserProfile buildUserProfile(String username) {
+        String normalizedUsername = username == null ? "" : username.trim();
+        String fallback = normalizedUsername.isBlank() ? "user" : normalizedUsername;
+
+        return new KeycloakUserProfile(
+                fallback + DEFAULT_EMAIL_DOMAIN,
+                fallback,
+                DEFAULT_LAST_NAME
+        );
     }
 
     public void setPassword(String adminAccessToken, String userId, String rawPassword) {
@@ -216,14 +247,20 @@ public class KeycloakAdminUserClient {
     ) {
     }
 
-    private record KeycloakCreateUserRequest(
+    private record KeycloakUpsertUserRequest(
             String username,
-            Boolean enabled
+            Boolean enabled,
+            Boolean emailVerified,
+            String email,
+            String firstName,
+            String lastName
     ) {
     }
 
-    private record KeycloakEnableUserRequest(
-            Boolean enabled
+    private record KeycloakUserProfile(
+            String email,
+            String firstName,
+            String lastName
     ) {
     }
 

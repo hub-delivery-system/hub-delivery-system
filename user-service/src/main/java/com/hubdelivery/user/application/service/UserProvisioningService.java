@@ -29,7 +29,7 @@ public class UserProvisioningService {
         String keycloakUserId = keycloakAdminUserClient.findUserIdByUsername(adminAccessToken, keycloakUsername)
                 .orElseGet(() -> keycloakAdminUserClient.createUser(adminAccessToken, keycloakUsername));
 
-        keycloakAdminUserClient.enableUser(adminAccessToken, keycloakUserId);
+        keycloakAdminUserClient.enableUser(adminAccessToken, keycloakUserId, keycloakUsername);
         keycloakAdminUserClient.setPassword(adminAccessToken, keycloakUserId, user.getPassword());
         keycloakAdminUserClient.assignRealmRole(adminAccessToken, keycloakUserId, user.getRole().name());
 
