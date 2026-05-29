@@ -149,21 +149,25 @@ public class HubTransferService {
     public ResGetHubTransferDto getHubRouteByTransferId(UUID transferId,UUID userId) {
         log.info("경로 조회 시작 - transferId: {}, userId : {}", transferId,userId.toString());
 
+
+
+
+
+        // 1. 캐시에서 transferId로 조회
+        HubTransferCacheData cachedData = cacheService.getRouteByTransferId(transferId);
+        if (cachedData != null) {
+            log.info("캐시에서 경로 조회 성공 - transferId: {}", transferId);
+            validateAndGetHubs(cachedData.getStartHubId(), cachedData.getEndHubId());
+            return cachedData.toResponseDto();
+        }
+
         // 2. DB에서 조회
         HubTransferEntity existingRoute = hubTransferRepository.findByIdFetchWaypoints(transferId)
                 .orElseThrow(() -> {
                     log.warn("경로를 찾을 수 없음 - transferId: {}", transferId);
                     return new HubTransferNotFoundException();
                 });
-
         validateAndGetHubs(existingRoute.getStartHubId(), existingRoute.getEndHubId());
-
-        // 1. 캐시에서 transferId로 조회
-        HubTransferCacheData cachedData = cacheService.getRouteByTransferId(transferId);
-        if (cachedData != null) {
-            log.info("캐시에서 경로 조회 성공 - transferId: {}", transferId);
-            return cachedData.toResponseDto();
-        }
 
         log.info("DB에서 경로 조회 성공 - routeId: {}", transferId);
 
