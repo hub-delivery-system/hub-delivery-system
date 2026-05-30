@@ -4,6 +4,7 @@ import com.hubdelivery.common.response.ApiResponse;
 import com.hubdelivery.common.response.PageResponse;
 import com.hubdelivery.common.security.UserRole;
 import com.hubdelivery.company.company.domain.entity.Company;
+import com.hubdelivery.company.company.domain.exception.CompanyAccessDeniedException;
 import com.hubdelivery.company.company.domain.exception.CompanyHubIntegrationException;
 import com.hubdelivery.company.company.domain.exception.CompanyHubNotFoundException;
 import com.hubdelivery.company.company.domain.exception.CompanyNotFoundException;
@@ -14,6 +15,8 @@ import com.hubdelivery.company.company.presentation.dto.request.CompanyUpdateReq
 import com.hubdelivery.company.company.presentation.dto.response.CompanyResponseDto;
 import com.hubdelivery.company.global.infrastructure.client.hub.HubClient;
 import com.hubdelivery.company.global.infrastructure.client.hub.dto.HubResponse;
+import com.hubdelivery.company.global.infrastructure.client.user.dto.UserResponse;
+import com.hubdelivery.company.global.security.UserAuthorizationValidator;
 import feign.FeignException;
 import feign.Request;
 import feign.Response;
@@ -58,6 +61,9 @@ class CompanyServiceTest {
     @Mock
     private HubClient hubClient;
 
+    @Mock
+    private UserAuthorizationValidator userAuthorizationValidator;
+
     private final UUID userId = UUID.randomUUID();
     private final UserRole userRole = UserRole.MASTER;
 
@@ -72,6 +78,7 @@ class CompanyServiceTest {
             UUID hubId = UUID.randomUUID();
             CompanyCreateRequestDto request = createRequest("모니터 업체", CompanyType.PRODUCER, hubId, "서울시 중구");
 
+            givenCurrentUser(UserRole.MASTER, null, null);
             givenHubExists(hubId);
             given(companyRepository.save(any(Company.class)))
                     .willAnswer(invocation -> {
@@ -101,6 +108,7 @@ class CompanyServiceTest {
             UUID hubId = UUID.randomUUID();
             CompanyCreateRequestDto request = createRequest("모니터 업체", CompanyType.PRODUCER, hubId, "서울시 중구");
 
+            givenCurrentUser(UserRole.MASTER, null, null);
             given(hubClient.getHub(userId, userRole, hubId)).willThrow(feignException(404));
 
             // when & then
@@ -117,12 +125,31 @@ class CompanyServiceTest {
             UUID hubId = UUID.randomUUID();
             CompanyCreateRequestDto request = createRequest("모니터 업체", CompanyType.PRODUCER, hubId, "서울시 중구");
 
+            givenCurrentUser(UserRole.MASTER, null, null);
             given(hubClient.getHub(userId, userRole, hubId)).willThrow(feignException(500));
 
             // when & then
             assertThatThrownBy(() -> companyService.createCompany(userId, userRole, request))
                     .isInstanceOf(CompanyHubIntegrationException.class);
 
+            verify(companyRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("업체 생성 실패 - HUB_MANAGER 담당 허브 불일치")
+        void createCompany_hubManagerDifferentHubDenied() {
+            // given
+            UUID requestHubId = UUID.randomUUID();
+            UUID userHubId = UUID.randomUUID();
+            CompanyCreateRequestDto request = createRequest("모니터 업체", CompanyType.PRODUCER, requestHubId, "서울시 중구");
+
+            givenCurrentUser(UserRole.HUB_MANAGER, userHubId, null);
+
+            // when & then
+            assertThatThrownBy(() -> companyService.createCompany(userId, UserRole.HUB_MANAGER, request))
+                    .isInstanceOf(CompanyAccessDeniedException.class);
+
+            verifyNoInteractions(hubClient);
             verify(companyRepository, never()).save(any());
         }
     }
@@ -214,6 +241,7 @@ class CompanyServiceTest {
             Company company = company(companyId, "기존 업체", CompanyType.PRODUCER, oldHubId, "기존 주소");
             CompanyUpdateRequestDto request = updateRequest("수정 업체", CompanyType.RECEIVER, newHubId, "수정 주소");
 
+            givenCurrentUser(UserRole.MASTER, null, null);
             given(companyRepository.findByIdAndDeletedAtIsNull(companyId)).willReturn(Optional.of(company));
             givenHubExists(newHubId);
 
@@ -235,6 +263,7 @@ class CompanyServiceTest {
             UUID companyId = UUID.randomUUID();
             CompanyUpdateRequestDto request = updateRequest("수정 업체", CompanyType.RECEIVER, UUID.randomUUID(), "수정 주소");
 
+            givenCurrentUser(UserRole.MASTER, null, null);
             given(companyRepository.findByIdAndDeletedAtIsNull(companyId)).willReturn(Optional.empty());
 
             // when & then
@@ -253,12 +282,33 @@ class CompanyServiceTest {
             Company company = company(companyId, "기존 업체", CompanyType.PRODUCER, UUID.randomUUID(), "기존 주소");
             CompanyUpdateRequestDto request = updateRequest("수정 업체", CompanyType.RECEIVER, hubId, "수정 주소");
 
+            givenCurrentUser(UserRole.MASTER, null, null);
             given(companyRepository.findByIdAndDeletedAtIsNull(companyId)).willReturn(Optional.of(company));
             given(hubClient.getHub(userId, userRole, hubId)).willThrow(feignException(404));
 
             // when & then
             assertThatThrownBy(() -> companyService.updateCompany(userId, userRole, companyId, request))
                     .isInstanceOf(CompanyHubNotFoundException.class);
+        }
+
+        @Test
+        @DisplayName("업체 수정 실패 - COMPANY_MANAGER 본인 업체 불일치")
+        void updateCompany_companyManagerDifferentCompanyDenied() {
+            // given
+            UUID companyId = UUID.randomUUID();
+            UUID userCompanyId = UUID.randomUUID();
+            UUID hubId = UUID.randomUUID();
+            Company company = company(companyId, "기존 업체", CompanyType.PRODUCER, hubId, "기존 주소");
+            CompanyUpdateRequestDto request = updateRequest("수정 업체", CompanyType.RECEIVER, hubId, "수정 주소");
+
+            givenCurrentUser(UserRole.COMPANY_MANAGER, null, userCompanyId);
+            given(companyRepository.findByIdAndDeletedAtIsNull(companyId)).willReturn(Optional.of(company));
+
+            // when & then
+            assertThatThrownBy(() -> companyService.updateCompany(userId, UserRole.COMPANY_MANAGER, companyId, request))
+                    .isInstanceOf(CompanyAccessDeniedException.class);
+
+            verifyNoInteractions(hubClient);
         }
     }
 
@@ -273,6 +323,7 @@ class CompanyServiceTest {
             UUID companyId = UUID.randomUUID();
             Company company = company(companyId, "모니터 업체", CompanyType.PRODUCER, UUID.randomUUID(), "서울시 중구");
 
+            givenCurrentUser(UserRole.MASTER, null, null);
             given(companyRepository.findByIdAndDeletedAtIsNull(companyId)).willReturn(Optional.of(company));
 
             // when
@@ -288,11 +339,31 @@ class CompanyServiceTest {
         void deleteCompany_companyNotFound() {
             // given
             UUID companyId = UUID.randomUUID();
+            givenCurrentUser(UserRole.MASTER, null, null);
             given(companyRepository.findByIdAndDeletedAtIsNull(companyId)).willReturn(Optional.empty());
 
             // when & then
             assertThatThrownBy(() -> companyService.deleteCompany(userId, userRole, companyId))
                     .isInstanceOf(CompanyNotFoundException.class);
+        }
+
+        @Test
+        @DisplayName("업체 삭제 실패 - HUB_MANAGER 담당 허브 불일치")
+        void deleteCompany_hubManagerDifferentHubDenied() {
+            // given
+            UUID companyId = UUID.randomUUID();
+            UUID companyHubId = UUID.randomUUID();
+            UUID userHubId = UUID.randomUUID();
+            Company company = company(companyId, "모니터 업체", CompanyType.PRODUCER, companyHubId, "서울시 중구");
+
+            givenCurrentUser(UserRole.HUB_MANAGER, userHubId, null);
+            given(companyRepository.findByIdAndDeletedAtIsNull(companyId)).willReturn(Optional.of(company));
+
+            // when & then
+            assertThatThrownBy(() -> companyService.deleteCompany(userId, UserRole.HUB_MANAGER, companyId))
+                    .isInstanceOf(CompanyAccessDeniedException.class);
+
+            assertThat(company.isDeleted()).isFalse();
         }
     }
 
@@ -324,6 +395,19 @@ class CompanyServiceTest {
                 BigDecimal.valueOf(126.9780)
         );
         given(hubClient.getHub(userId, userRole, hubId)).willReturn(ApiResponse.ok(response));
+    }
+
+    private void givenCurrentUser(UserRole role, UUID hubId, UUID companyId) {
+        UserResponse response = new UserResponse(
+                userId,
+                "testuser",
+                "slack",
+                role,
+                "APPROVED",
+                companyId,
+                hubId
+        );
+        given(userAuthorizationValidator.validateCurrentUser(userId, role)).willReturn(response);
     }
 
     private FeignException feignException(int status) {
