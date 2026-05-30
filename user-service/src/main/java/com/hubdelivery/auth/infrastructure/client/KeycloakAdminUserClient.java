@@ -114,6 +114,14 @@ public class KeycloakAdminUserClient {
     }
 
     public void enableUser(String adminAccessToken, String userId, String username) {
+        upsertUserStatus(adminAccessToken, userId, username, true);
+    }
+
+    public void disableUser(String adminAccessToken, String userId, String username) {
+        upsertUserStatus(adminAccessToken, userId, username, false);
+    }
+
+    private void upsertUserStatus(String adminAccessToken, String userId, String username, boolean enabled) {
         try {
             KeycloakUserProfile profile = buildUserProfile(username);
 
@@ -123,7 +131,7 @@ public class KeycloakAdminUserClient {
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(new KeycloakUpsertUserRequest(
                             username,
-                            true,
+                            enabled,
                             true,
                             profile.email(),
                             profile.firstName(),
@@ -132,11 +140,11 @@ public class KeycloakAdminUserClient {
                     .retrieve()
                     .toBodilessEntity();
         } catch (RestClientResponseException e) {
-            log.error("Failed to enable Keycloak user. userId={}, status={}, body={}",
-                    userId, e.getStatusCode().value(), e.getResponseBodyAsString());
+            log.error("Failed to upsert Keycloak user status. userId={}, enabled={}, status={}, body={}",
+                    userId, enabled, e.getStatusCode().value(), e.getResponseBodyAsString());
             throw new KeycloakUnavailableException();
         } catch (RestClientException e) {
-            log.error("Failed to enable Keycloak user. userId={}", userId, e);
+            log.error("Failed to upsert Keycloak user status. userId={}, enabled={}", userId, enabled, e);
             throw new KeycloakUnavailableException();
         }
     }

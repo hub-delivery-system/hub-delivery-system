@@ -69,10 +69,10 @@ public class UserService {
         user.approve(mappedRole, hubId, companyId);
 
         try {
-            userProvisioningService.provisionApprovedUser(user);
+            userProvisioningService.activateApprovedUser(user);
             deliveryManagerProvisionService.provisionIfRequired(user);
         } catch (RuntimeException ex) {
-            compensateProvisioning(user, ex);
+            rollbackApprovalProvisioning(user, ex);
             throw ex;
         }
 
@@ -299,9 +299,9 @@ public class UserService {
     ) {
     }
 
-    private void compensateProvisioning(User user, RuntimeException originalException) {
+    private void rollbackApprovalProvisioning(User user, RuntimeException originalException) {
         try {
-            userProvisioningService.compensateProvisioning(user);
+            userProvisioningService.rollbackApprovalActivation(user);
         } catch (RuntimeException compensationException) {
             log.error("승인 보상 처리 실패. userId={}", user.getId(), compensationException);
             originalException.addSuppressed(compensationException);
