@@ -19,7 +19,9 @@ import lombok.RequiredArgsConstructor;
 
 import com.hubdelivery.common.response.ApiResponse;
 import com.hubdelivery.common.response.PageResponse;
+import com.hubdelivery.common.security.UserRole;
 import com.hubdelivery.user.application.service.UserService;
+import com.hubdelivery.user.domain.type.UserStatus;
 import com.hubdelivery.user.presentation.dto.request.UserUpdateRequest;
 import com.hubdelivery.user.presentation.dto.response.UserApproveResponse;
 import com.hubdelivery.user.presentation.dto.response.UserRejectResponse;
@@ -53,9 +55,17 @@ public class UserController {
     public ApiResponse<PageResponse<UserResponse>> getUsers(
             @RequestParam(required = false) Integer page,
             @RequestParam(required = false) Integer size,
-            @RequestParam(required = false) String sort
+            @RequestParam(required = false) String sort,
+            @RequestParam(required = false) String username,
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) UserRole role,
+            @RequestParam(required = false) UserStatus status,
+            @RequestParam(required = false) UUID hubId,
+            @RequestParam(required = false) UUID companyId
     ) {
-        return ApiResponse.ok(userService.getUsers(page, size, sort));
+        return ApiResponse.ok(userService.getUsers(
+                page, size, sort, username, name, role, status, hubId, companyId
+        ));
     }
 
     @GetMapping("/{userId}")

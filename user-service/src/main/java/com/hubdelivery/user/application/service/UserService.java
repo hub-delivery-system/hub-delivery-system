@@ -23,6 +23,7 @@ import com.hubdelivery.common.security.UserRole;
 import com.hubdelivery.common.util.PageableUtils;
 import com.hubdelivery.user.domain.entity.User;
 import com.hubdelivery.user.domain.repository.UserRepository;
+import com.hubdelivery.user.domain.repository.UserSpecifications;
 import com.hubdelivery.user.domain.type.UserStatus;
 import com.hubdelivery.user.presentation.dto.request.UserUpdateRequest;
 import com.hubdelivery.user.presentation.dto.response.UserApproveResponse;
@@ -80,9 +81,22 @@ public class UserService {
         );
     }
 
-    public PageResponse<UserResponse> getUsers(Integer page, Integer size, String sort) {
+    public PageResponse<UserResponse> getUsers(
+            Integer page,
+            Integer size,
+            String sort,
+            String username,
+            String name,
+            UserRole role,
+            UserStatus status,
+            UUID hubId,
+            UUID companyId
+    ) {
         Pageable pageable = createPageable(page, size, sort);
-        Page<UserResponse> users = userRepository.findAll(pageable).map(this::toResponse);
+        Page<UserResponse> users = userRepository.findAll(
+                UserSpecifications.withFilters(username, name, role, status, hubId, companyId),
+                pageable
+        ).map(this::toResponse);
 
         return PageResponse.from(users);
     }
