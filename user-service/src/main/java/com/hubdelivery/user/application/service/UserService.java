@@ -1,5 +1,6 @@
 package com.hubdelivery.user.application.service;
 
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
@@ -35,6 +36,9 @@ import com.hubdelivery.user.presentation.dto.response.UserResponse;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class UserService {
+
+    private static final String DEFAULT_SORT_PROPERTY = "createdAt";
+    private static final Set<String> ALLOWED_SORT_PROPERTIES = Set.of("createdAt", "updatedAt");
 
     private final UserRepository userRepository;
     private final UserAffiliationResolverService userAffiliationResolverService;
@@ -323,18 +327,29 @@ public class UserService {
 
     private Sort resolveSort(String sort) {
         if (!StringUtils.hasText(sort)) {
-            return Sort.by(Sort.Direction.DESC, "createdAt");
+            return Sort.by(Sort.Direction.DESC, DEFAULT_SORT_PROPERTY);
         }
 
         String[] parts = sort.split(",", 2);
         String property = parts[0].trim();
         if (!StringUtils.hasText(property)) {
-            property = "createdAt";
+            property = DEFAULT_SORT_PROPERTY;
+        }
+
+        if (!ALLOWED_SORT_PROPERTIES.contains(property)) {
+            throw new CommonException(
+                    CommonErrorCode.INVALID_INPUT_VALUE,
+                    "sort는 createdAt,updatedAt만 지원합니다."
+            );
         }
 
         Sort.Direction direction = parts.length < 2
                 ? Sort.Direction.DESC
-                : Sort.Direction.fromOptionalString(parts[1].trim()).orElse(Sort.Direction.DESC);
+                : Sort.Direction.fromOptionalString(parts[1].trim())
+                .orElseThrow(() -> new CommonException(
+                        CommonErrorCode.INVALID_INPUT_VALUE,
+                        "sort direction은 ASC 또는 DESC만 지원합니다."
+                ));
 
         return Sort.by(direction, property);
     }
