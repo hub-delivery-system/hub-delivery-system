@@ -5,6 +5,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
@@ -39,6 +41,11 @@ public class CompanyDirectoryClient {
     private final AffiliationLookupProperties properties;
     private final RestClient restClient = RestClient.create();
 
+    @Retryable(
+            retryFor = CommonException.class,
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 300)
+    )
     public Optional<UUID> findCompanyIdByName(String affiliationName) {
         String normalizedName = normalize(affiliationName);
         if (!StringUtils.hasText(normalizedName)) {
@@ -78,6 +85,11 @@ public class CompanyDirectoryClient {
         }
     }
 
+    @Retryable(
+            retryFor = CommonException.class,
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 300)
+    )
     public Optional<UUID> findHubIdByCompanyId(UUID companyId) {
         if (companyId == null) {
             return Optional.empty();

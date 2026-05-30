@@ -24,7 +24,11 @@ spring:
 
 eureka:
   client:
-    enabled: false
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://localhost:19090/eureka}
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
 
 keycloak:
   base-url: ${KEYCLOAK_BASE_URL:http://keycloak:8080}
@@ -44,6 +48,18 @@ integration:
     company-service-base-url: ${COMPANY_SERVICE_BASE_URL:http://localhost:19040}
   delivery-manager:
     service-base-url: ${DELIVERY_SERVICE_BASE_URL:http://localhost:19060}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_URL:http://localhost:9411/api/v2/spans}
 
 ---
 spring:
@@ -78,3 +94,13 @@ integration:
     company-service-base-url: ${COMPANY_SERVICE_BASE_URL:http://company-product-service:19040}
   delivery-manager:
     service-base-url: ${DELIVERY_SERVICE_BASE_URL:http://delivery-service:19060}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_SERVER_URL:http://eureka-server:19090/eureka}
+
+management:
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_URL:http://zipkin:9411/api/v2/spans}

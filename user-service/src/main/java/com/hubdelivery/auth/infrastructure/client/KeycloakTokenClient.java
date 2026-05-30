@@ -1,6 +1,8 @@
 package com.hubdelivery.auth.infrastructure.client;
 
 import org.springframework.http.MediaType;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -22,6 +24,11 @@ public class KeycloakTokenClient {
     private final KeycloakProperties properties;
     private final RestClient restClient = RestClient.create();
 
+    @Retryable(
+            retryFor = KeycloakUnavailableException.class,
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 300)
+    )
     public KeycloakTokenResponse issueToken(String slackId, String password) {
 
         String tokenUri = properties.baseUrl()

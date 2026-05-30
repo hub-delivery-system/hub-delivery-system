@@ -7,6 +7,8 @@ import java.util.Optional;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
@@ -22,6 +24,11 @@ import com.hubdelivery.auth.domain.exception.KeycloakUnavailableException;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Retryable(
+        retryFor = KeycloakUnavailableException.class,
+        maxAttempts = 3,
+        backoff = @Backoff(delay = 300)
+)
 public class KeycloakAdminUserClient {
 
     private static final String MASTER_REALM = "master";
