@@ -11,7 +11,13 @@ import org.springframework.web.bind.annotation.RequestHeader;
 
 import java.util.UUID;
 
-@FeignClient(name = "user-service", path = "/api/v1/users", configuration = UserClientConfig.class)
+// user-service는 현재 Eureka에 등록하지 않으므로 URL 기반으로 직접 호출
+@FeignClient(
+        name = "user-service",
+        url = "${integration.user-service.base-url}",
+        path = "/api/v1/users",
+        configuration = UserClientConfig.class
+)
 public interface UserClient {
 
     @GetMapping("/{user_id}")
