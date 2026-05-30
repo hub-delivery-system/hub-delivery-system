@@ -30,7 +30,7 @@ import com.hubdelivery.user.presentation.dto.response.UserResponse;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/users")
-public class UserController {
+public class UserController implements UserControllerDocs {
 
     private final UserService userService;
 
