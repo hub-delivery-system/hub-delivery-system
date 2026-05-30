@@ -1,6 +1,5 @@
 package com.hubdelivery.user.presentation.controller;
 
-import java.util.List;
 import java.util.UUID;
 
 import jakarta.validation.Valid;
@@ -13,11 +12,13 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import lombok.RequiredArgsConstructor;
 
 import com.hubdelivery.common.response.ApiResponse;
+import com.hubdelivery.common.response.PageResponse;
 import com.hubdelivery.user.application.service.UserService;
 import com.hubdelivery.user.presentation.dto.request.UserUpdateRequest;
 import com.hubdelivery.user.presentation.dto.response.UserApproveResponse;
@@ -49,8 +50,12 @@ public class UserController {
 
     @GetMapping
     @PreAuthorize("hasRole('MASTER')")
-    public ApiResponse<List<UserResponse>> getUsers() {
-        return ApiResponse.ok(userService.getUsers());
+    public ApiResponse<PageResponse<UserResponse>> getUsers(
+            @RequestParam(required = false) Integer page,
+            @RequestParam(required = false) Integer size,
+            @RequestParam(required = false) String sort
+    ) {
+        return ApiResponse.ok(userService.getUsers(page, size, sort));
     }
 
     @GetMapping("/{userId}")
