@@ -1,4 +1,4 @@
-package com.hubdelivery.company.global.infrastructure.client.dto;
+package com.hubdelivery.company.global.infrastructure.client.user.dto;
 
 import com.hubdelivery.common.security.UserRole;
 

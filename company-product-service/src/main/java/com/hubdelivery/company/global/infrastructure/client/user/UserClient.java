@@ -1,9 +1,9 @@
-package com.hubdelivery.company.global.infrastructure.client;
+package com.hubdelivery.company.global.infrastructure.client.user;
 
 import com.hubdelivery.common.response.ApiResponse;
 import com.hubdelivery.common.security.UserRole;
-import com.hubdelivery.company.global.infrastructure.client.config.UserClientConfig;
-import com.hubdelivery.company.global.infrastructure.client.dto.UserResponse;
+import com.hubdelivery.company.global.infrastructure.client.user.config.UserClientConfig;
+import com.hubdelivery.company.global.infrastructure.client.user.dto.UserResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
