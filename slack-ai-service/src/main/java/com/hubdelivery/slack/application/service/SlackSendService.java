@@ -48,7 +48,7 @@ public class SlackSendService {
 
         } catch (SlackApiException | IOException e) {
             log.error("슬랙 API 예외 - slackId: {}, error: {}", slackId, e.getMessage());
-            // ✅ checked exception은 CircuitBreaker가 기본으로 카운트 안 함
+            //    checked exception은 CircuitBreaker가 기본으로 카운트 안 함
             //    application.yaml의 recordExceptions 설정으로 명시적으로 잡아줌
             throw new RuntimeException("Slack API 호출 실패", e);
         }

@@ -1,0 +1,48 @@
+# 개인 로컬 단독 실행용 프로필입니다.
+# 사용 상황:
+# - IntelliJ에서 slack-ai-service만 단독 실행
+# - JMeter로 Slack AI API만 부하 테스트
+# - DB 연결, Controller, Actuator, CircuitBreaker 상태만 빠르게 확인
+#
+# 실행 방법:
+# - Active profiles: local
+# - 또는 VM Options: -Dspring.profiles.active=local
+
+spring:
+  cloud:
+    compatibility-verifier:
+      # 현재 팀 빌드가 Spring Boot 3.3.5 + Spring Cloud 2024.0.0 조합이라
+      # 로컬 실행 시 compatibility verifier에서 막힐 수 있습니다.
+      # 팀 빌드를 건드리지 않기 위해 local 프로필에서만 검증을 비활성화합니다.
+      enabled: false
+
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    # 로컬 전용 PostgreSQL 컨테이너:
+    # docker run --name slack-ai-postgres ^
+    #   -e POSTGRES_USER=postgres ^
+    #   -e POSTGRES_PASSWORD=1234 ^
+    #   -e POSTGRES_DB=slack_ai_db ^
+    #   -p 15432:5432 ^
+    #   -d postgres:15
+    url: jdbc:postgresql://localhost:15432/slack_ai_db
+    username: postgres
+    password: 1234
+
+  kafka:
+    # Kafka가 안 떠 있어도 단순 Controller/DB 확인은 가능하지만,
+    # Kafka Consumer 실제 테스트를 하려면 localhost:9092에 Kafka가 떠 있어야 합니다.
+    bootstrap-servers: localhost:9092
+
+eureka:
+  client:
+    # Slack AI Service만 단독 실행할 때는 Eureka 서버가 없어도 되므로 비활성화.
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+management:
+  zipkin:
+    tracing:
+      # 단독 실행에서는 Zipkin 없이도 로그의 traceId/spanId 패턴 확인 가능.
+      enabled: false

@@ -7,12 +7,16 @@ spring:
 
   datasource:
     driver-class-name: org.postgresql.Driver
+    # 기본값은 전체 MSA / Docker Compose 연동 기준입니다.
+    # IntelliJ에서 전체 MSA를 로컬 포트로 붙일 경우 DB_URL 환경변수로 덮어쓰면 됩니다.
     url: ${DB_URL:jdbc:postgresql://localhost:5432/slack_ai_db}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:change-me}
 
   jpa:
     database: postgresql
+    # Hibernate 6에서는 dialect를 명시하지 않아도 자동 감지되지만,
+    # 팀 기존 설정과의 호환성을 위해 유지합니다.
     database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: update
@@ -27,6 +31,8 @@ spring:
       mode: never
 
   kafka:
+    # 전체 MSA / 로컬 Docker Compose에서는 보통 localhost:9092 사용.
+    # Docker 컨테이너 내부에서 실행할 때는 환경변수로 kafka:29092 등을 주입합니다.
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
       group-id: slack-ai-service
@@ -41,10 +47,12 @@ spring:
 
 eureka:
   client:
+    # 기본값은 전체 MSA 연동 기준이므로 Eureka 사용.
+    enabled: ${EUREKA_CLIENT_ENABLED:true}
+    register-with-eureka: ${EUREKA_REGISTER_WITH_EUREKA:true}
+    fetch-registry: ${EUREKA_FETCH_REGISTRY:true}
     service-url:
       defaultZone: http://${EUREKA_HOST:localhost}:${EUREKA_PORT:19090}/eureka/
-    register-with-eureka: true
-    fetch-registry: true
 
 slack:
   bot:
@@ -66,7 +74,7 @@ scheduler:
 
 kafka:
   topic:
-    order-created: order.created
+    order-created: ${KAFKA_TOPIC_ORDER_CREATED:order.created}
 
 springdoc:
   api-docs:
@@ -76,6 +84,7 @@ springdoc:
 
 logging:
   pattern:
+    # Zipkin/Micrometer tracing 확인용 로그 패턴.
     level: "%5p [${spring.application.name:}, traceId=%X{traceId:-}, spanId=%X{spanId:-}]"
 
 management:
@@ -85,8 +94,9 @@ management:
       probability: 1.0
   zipkin:
     tracing:
-      enabled: false
-  # ✅ Actuator로 Circuit Breaker 상태 확인 가능하게 노출
+      # 기본은 꺼둠. Zipkin 서버까지 확인할 때 환경변수로 true 전환 가능.
+      enabled: ${ZIPKIN_TRACING_ENABLED:false}
+      endpoint: ${ZIPKIN_ENDPOINT:http://localhost:9411/api/v2/spans}
   endpoints:
     web:
       exposure:
@@ -95,30 +105,25 @@ management:
     circuitbreakers:
       enabled: true
 
-# ✅ Resilience4j Circuit Breaker 설정
 resilience4j:
   circuitbreaker:
     instances:
-
-      # --- Gemini AI API ---
       gemini:
-        # 슬라이딩 윈도우: 최근 10번 호출 기준으로 실패율 계산
+        # 최근 10회 호출을 기준으로 실패율 계산.
         slidingWindowSize: 10
-        # 실패율 50% 이상이면 OPEN
+        # 실패율 50% 이상이면 Circuit Open.
         failureRateThreshold: 50
-        # OPEN 상태 유지 시간: 30초 후 HALF_OPEN으로 전환
+        # Open 상태 유지 후 Half-Open으로 전환되는 시간.
         waitDurationInOpenState: 30s
-        # HALF_OPEN에서 허용할 테스트 호출 수
+        # Half-Open 상태에서 허용할 테스트 호출 수.
         permittedNumberOfCallsInHalfOpenState: 3
-        # Circuit Breaker를 활성화하기 위한 최소 호출 수
+        # 최소 5회 호출 이후부터 실패율 계산.
         minimumNumberOfCalls: 5
-        # ✅ 아래 예외들을 "실패"로 카운트
         recordExceptions:
           - java.lang.RuntimeException
           - org.springframework.web.client.ResourceAccessException
           - org.springframework.web.client.HttpServerErrorException
 
-      # --- Naver Directions API ---
       naver:
         slidingWindowSize: 10
         failureRateThreshold: 50
@@ -130,11 +135,9 @@ resilience4j:
           - org.springframework.web.client.ResourceAccessException
           - org.springframework.web.client.HttpServerErrorException
 
-      # --- Slack API ---
-      # Slack은 메시지 전송이 핵심 기능이므로 임계값을 좀 더 관대하게
       slack:
         slidingWindowSize: 10
-        # 실패율 60% 이상이면 OPEN (Slack은 일시적 오류가 잦음)
+        # Slack 메시지 전송은 일시적 외부 장애가 있을 수 있어 Gemini보다 조금 관대하게 설정.
         failureRateThreshold: 60
         waitDurationInOpenState: 60s
         permittedNumberOfCallsInHalfOpenState: 5
