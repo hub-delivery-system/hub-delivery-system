@@ -4,6 +4,7 @@ import com.hubdelivery.slack.infrastructure.client.DeliveryManagerClient;
 import com.hubdelivery.slack.infrastructure.client.dto.CompanyDeliveryManagerDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
@@ -19,6 +20,10 @@ public class DeliveryAlertScheduler {
     private final GeminiService geminiService;
     private final SlackSendService slackSendService;
 
+    // 시스템 계정 UUID - application-local.yaml에서 관리
+    @Value("${system.account.id:00000000-0000-0000-0000-000000000000}")
+    private String systemAccountId;
+
     @Scheduled(cron = "${scheduler.daily-alert.cron:0 0 6 * * *}")
     public void sendDailyDeliveryAlert() {
         log.info("일일 업체 배송담당자 슬랙 알림 스케줄러 시작");
@@ -26,7 +31,7 @@ public class DeliveryAlertScheduler {
         try {
             List<CompanyDeliveryManagerDto> managers =
                     deliveryManagerClient.getCompanyDeliveryManagers(
-                            "COMPANY_DELIVERY_MANAGER", "system", "MASTER");
+                            "COMPANY_DELIVERY_MANAGER", systemAccountId, "MASTER");
 
             if (managers == null || managers.isEmpty()) {
                 log.info("오늘 배송 담당자 없음 - 알림 종료");

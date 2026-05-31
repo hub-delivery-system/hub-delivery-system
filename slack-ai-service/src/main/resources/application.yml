@@ -144,3 +144,7 @@ resilience4j:
         minimumNumberOfCalls: 5
         recordExceptions:
           - java.lang.RuntimeException
+
+system:
+  account:
+    id: ${SYSTEM_ACCOUNT_ID:00000000-0000-0000-0000-000000000000}
