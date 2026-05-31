@@ -22,7 +22,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/hubs")
 @RequiredArgsConstructor
-public class HubController {
+public class HubController implements HubControllerDocs{
 
     private final HubService hubService;
 

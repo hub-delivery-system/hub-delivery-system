@@ -25,7 +25,7 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/v1/transfers")
 @RequiredArgsConstructor
-public class HubTransferController {
+public class HubTransferController implements HubTransferControllerDocs {
 
     private final HubTransferService hubTransferService;
 
