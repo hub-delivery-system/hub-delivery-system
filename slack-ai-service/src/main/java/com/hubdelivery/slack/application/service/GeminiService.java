@@ -23,7 +23,7 @@ public class GeminiService {
     private static final String GEMINI_URL =
             "https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=";
 
-    // ✅ geminiRestTemplate Bean을 명시적으로 주입
+    // geminiRestTemplate Bean을 명시적으로 주입
     private final RestTemplate restTemplate;
 
     public GeminiService(@Qualifier("geminiRestTemplate") RestTemplate restTemplate) {
