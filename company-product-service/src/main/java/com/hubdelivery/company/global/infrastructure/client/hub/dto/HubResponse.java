@@ -1,4 +1,4 @@
-package com.hubdelivery.company.global.infrastructure.client.dto;
+package com.hubdelivery.company.global.infrastructure.client.hub.dto;
 
 import java.math.BigDecimal;
 import java.util.UUID;

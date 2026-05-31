@@ -42,6 +42,10 @@ springdoc:
   api-docs:
     path: /v3/api-docs
 
+integration:
+  user-service:
+    base-url: ${USER_SERVICE_BASE_URL:http://localhost:19020}
+
 ---
 spring:
   config:
@@ -77,3 +81,7 @@ management:
   zipkin:
     tracing:
       endpoint: ${ZIPKIN_URL:http://zipkin:9411/api/v2/spans}
+
+integration:
+  user-service:
+    base-url: ${USER_SERVICE_BASE_URL:http://user-service:19020}

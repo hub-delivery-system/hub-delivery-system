@@ -109,4 +109,24 @@ public class User extends BaseEntity {
         this.companyId = companyId;
     }
 
+    public void reject() {
+        this.status = UserStatus.REJECTED;
+    }
+
+    public void updateByMaster(
+            String username,
+            RequestedRole requestedRole,
+            UserRole role,
+            String affiliationName,
+            UUID hubId,
+            UUID companyId
+    ) {
+        this.username = username;
+        this.requestedRole = requestedRole;
+        this.role = role;
+        this.affiliationName = affiliationName;
+        this.hubId = hubId;
+        this.companyId = companyId;
+    }
+
 }

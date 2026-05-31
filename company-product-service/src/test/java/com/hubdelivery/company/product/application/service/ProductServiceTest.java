@@ -6,14 +6,12 @@ import com.hubdelivery.common.security.UserRole;
 import com.hubdelivery.company.company.domain.entity.Company;
 import com.hubdelivery.company.company.domain.repository.CompanyRepository;
 import com.hubdelivery.company.company.domain.type.CompanyType;
-import com.hubdelivery.company.global.infrastructure.client.HubClient;
-import com.hubdelivery.company.global.infrastructure.client.dto.HubResponse;
+import com.hubdelivery.company.global.infrastructure.client.hub.HubClient;
+import com.hubdelivery.company.global.infrastructure.client.hub.dto.HubResponse;
+import com.hubdelivery.company.global.infrastructure.client.user.dto.UserResponse;
+import com.hubdelivery.company.global.security.UserAuthorizationValidator;
 import com.hubdelivery.company.product.domain.entity.Product;
-import com.hubdelivery.company.product.domain.exception.ProductCompanyNotFoundException;
-import com.hubdelivery.company.product.domain.exception.ProductHubIntegrationException;
-import com.hubdelivery.company.product.domain.exception.ProductHubNotFoundException;
-import com.hubdelivery.company.product.domain.exception.ProductNotFoundException;
-import com.hubdelivery.company.product.domain.exception.ProductStockNotEnoughException;
+import com.hubdelivery.company.product.domain.exception.*;
 import com.hubdelivery.company.product.domain.repository.ProductRepository;
 import com.hubdelivery.company.product.presentation.dto.request.ProductCreateRequestDto;
 import com.hubdelivery.company.product.presentation.dto.request.ProductStockUpdateRequestDto;
@@ -47,9 +45,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class ProductServiceTest {
@@ -66,6 +62,9 @@ class ProductServiceTest {
     @Mock
     private HubClient hubClient;
 
+    @Mock
+    private UserAuthorizationValidator userAuthorizationValidator;
+
     private final UUID userId = UUID.randomUUID();
     private final UserRole userRole = UserRole.MASTER;
 
@@ -81,6 +80,7 @@ class ProductServiceTest {
             UUID companyId = UUID.randomUUID();
             ProductCreateRequestDto request = createRequest("모니터A", hubId, companyId, 100);
 
+            givenCurrentUser(UserRole.MASTER, null, null);
             givenHubExists(hubId);
             givenCompanyExists(companyId);
             given(productRepository.save(any(Product.class)))
@@ -113,6 +113,7 @@ class ProductServiceTest {
             UUID companyId = UUID.randomUUID();
             ProductCreateRequestDto request = createRequest("모니터A", hubId, companyId, 100);
 
+            givenCurrentUser(UserRole.MASTER, null, null);
             given(hubClient.getHub(userId, userRole, hubId)).willThrow(feignException(404));
 
             // when & then
@@ -131,6 +132,7 @@ class ProductServiceTest {
             UUID companyId = UUID.randomUUID();
             ProductCreateRequestDto request = createRequest("모니터A", hubId, companyId, 100);
 
+            givenCurrentUser(UserRole.MASTER, null, null);
             given(hubClient.getHub(userId, userRole, hubId)).willThrow(feignException(500));
 
             // when & then
@@ -149,6 +151,7 @@ class ProductServiceTest {
             UUID companyId = UUID.randomUUID();
             ProductCreateRequestDto request = createRequest("모니터A", hubId, companyId, 100);
 
+            givenCurrentUser(UserRole.MASTER, null, null);
             givenHubExists(hubId);
             given(companyRepository.findByIdAndDeletedAtIsNull(companyId)).willReturn(Optional.empty());
 
@@ -156,6 +159,26 @@ class ProductServiceTest {
             assertThatThrownBy(() -> productService.createProduct(userId, userRole, request))
                     .isInstanceOf(ProductCompanyNotFoundException.class);
 
+            verify(productRepository, never()).save(any());
+        }
+
+        @Test
+        @DisplayName("상품 생성 실패 - HUB_MANAGER 담당 허브 불일치")
+        void createProduct_hubManagerDifferentHubDenied() {
+            // given
+            UUID requestHubId = UUID.randomUUID();
+            UUID userHubId = UUID.randomUUID();
+            UUID companyId = UUID.randomUUID();
+            ProductCreateRequestDto request = createRequest("모니터A", requestHubId, companyId, 100);
+
+            givenCurrentUser(UserRole.HUB_MANAGER, userHubId, null);
+
+            // when & then
+            assertThatThrownBy(() -> productService.createProduct(userId, UserRole.HUB_MANAGER, request))
+                    .isInstanceOf(ProductAccessDeniedException.class);
+
+            verifyNoInteractions(hubClient);
+            verifyNoInteractions(companyRepository);
             verify(productRepository, never()).save(any());
         }
     }
@@ -248,6 +271,7 @@ class ProductServiceTest {
             Product product = product(productId, "기존 상품", oldHubId, oldCompanyId, 100);
             ProductUpdateRequestDto request = updateRequest("수정 상품", newHubId, newCompanyId, 50);
 
+            givenCurrentUser(UserRole.MASTER, null, null);
             given(productRepository.findByIdAndDeletedAtIsNull(productId)).willReturn(Optional.of(product));
             givenHubExists(newHubId);
             givenCompanyExists(newCompanyId);
@@ -270,6 +294,7 @@ class ProductServiceTest {
             UUID productId = UUID.randomUUID();
             ProductUpdateRequestDto request = updateRequest("수정 상품", UUID.randomUUID(), UUID.randomUUID(), 50);
 
+            givenCurrentUser(UserRole.MASTER, null, null);
             given(productRepository.findByIdAndDeletedAtIsNull(productId)).willReturn(Optional.empty());
 
             // when & then
@@ -289,6 +314,7 @@ class ProductServiceTest {
             Product product = product(productId, "기존 상품", UUID.randomUUID(), UUID.randomUUID(), 100);
             ProductUpdateRequestDto request = updateRequest("수정 상품", hubId, UUID.randomUUID(), 50);
 
+            givenCurrentUser(UserRole.MASTER, null, null);
             given(productRepository.findByIdAndDeletedAtIsNull(productId)).willReturn(Optional.of(product));
             given(hubClient.getHub(userId, userRole, hubId)).willThrow(feignException(404));
 
@@ -309,6 +335,7 @@ class ProductServiceTest {
             Product product = product(productId, "기존 상품", UUID.randomUUID(), UUID.randomUUID(), 100);
             ProductUpdateRequestDto request = updateRequest("수정 상품", hubId, companyId, 50);
 
+            givenCurrentUser(UserRole.MASTER, null, null);
             given(productRepository.findByIdAndDeletedAtIsNull(productId)).willReturn(Optional.of(product));
             givenHubExists(hubId);
             given(companyRepository.findByIdAndDeletedAtIsNull(companyId)).willReturn(Optional.empty());
@@ -316,6 +343,29 @@ class ProductServiceTest {
             // when & then
             assertThatThrownBy(() -> productService.updateProduct(userId, userRole, productId, request))
                     .isInstanceOf(ProductCompanyNotFoundException.class);
+        }
+
+        @Test
+        @DisplayName("상품 수정 실패 - COMPANY_MANAGER 본인 업체 불일치")
+        void updateProduct_companyManagerDifferentCompanyDenied() {
+            // given
+            UUID productId = UUID.randomUUID();
+            UUID productCompanyId = UUID.randomUUID();
+            UUID requestCompanyId = UUID.randomUUID();
+            UUID userCompanyId = UUID.randomUUID();
+            UUID hubId = UUID.randomUUID();
+            Product product = product(productId, "기존 상품", hubId, productCompanyId, 100);
+            ProductUpdateRequestDto request = updateRequest("수정 상품", hubId, requestCompanyId, 50);
+
+            givenCurrentUser(UserRole.COMPANY_MANAGER, null, userCompanyId);
+            given(productRepository.findByIdAndDeletedAtIsNull(productId)).willReturn(Optional.of(product));
+
+            // when & then
+            assertThatThrownBy(() -> productService.updateProduct(userId, UserRole.COMPANY_MANAGER, productId, request))
+                    .isInstanceOf(ProductAccessDeniedException.class);
+
+            verifyNoInteractions(hubClient);
+            verifyNoInteractions(companyRepository);
         }
     }
 
@@ -330,6 +380,7 @@ class ProductServiceTest {
             UUID productId = UUID.randomUUID();
             Product product = product(productId, "모니터A", UUID.randomUUID(), UUID.randomUUID(), 100);
 
+            givenCurrentUser(UserRole.MASTER, null, null);
             given(productRepository.findByIdAndDeletedAtIsNull(productId)).willReturn(Optional.of(product));
 
             // when
@@ -345,11 +396,31 @@ class ProductServiceTest {
         void deleteProduct_productNotFound() {
             // given
             UUID productId = UUID.randomUUID();
+            givenCurrentUser(UserRole.MASTER, null, null);
             given(productRepository.findByIdAndDeletedAtIsNull(productId)).willReturn(Optional.empty());
 
             // when & then
             assertThatThrownBy(() -> productService.deleteProduct(userId, userRole, productId))
                     .isInstanceOf(ProductNotFoundException.class);
+        }
+
+        @Test
+        @DisplayName("상품 삭제 실패 - HUB_MANAGER 담당 허브 불일치")
+        void deleteProduct_hubManagerDifferentHubDenied() {
+            // given
+            UUID productId = UUID.randomUUID();
+            UUID productHubId = UUID.randomUUID();
+            UUID userHubId = UUID.randomUUID();
+            Product product = product(productId, "모니터A", productHubId, UUID.randomUUID(), 100);
+
+            givenCurrentUser(UserRole.HUB_MANAGER, userHubId, null);
+            given(productRepository.findByIdAndDeletedAtIsNull(productId)).willReturn(Optional.of(product));
+
+            // when & then
+            assertThatThrownBy(() -> productService.deleteProduct(userId, UserRole.HUB_MANAGER, productId))
+                    .isInstanceOf(ProductAccessDeniedException.class);
+
+            assertThat(product.isDeleted()).isFalse();
         }
     }
 
@@ -365,6 +436,7 @@ class ProductServiceTest {
             Product product = product(productId, "모니터A", UUID.randomUUID(), UUID.randomUUID(), 100);
             ProductStockUpdateRequestDto request = stockRequest(30);
 
+            givenCurrentUser(UserRole.MASTER, null, null);
             given(productRepository.findLockedByIdAndDeletedAtIsNull(productId)).willReturn(Optional.of(product));
 
             // when
@@ -382,6 +454,7 @@ class ProductServiceTest {
             UUID productId = UUID.randomUUID();
             ProductStockUpdateRequestDto request = stockRequest(30);
 
+            givenCurrentUser(UserRole.MASTER, null, null);
             given(productRepository.findLockedByIdAndDeletedAtIsNull(productId)).willReturn(Optional.empty());
 
             // when & then
@@ -397,6 +470,7 @@ class ProductServiceTest {
             Product product = product(productId, "모니터A", UUID.randomUUID(), UUID.randomUUID(), 10);
             ProductStockUpdateRequestDto request = stockRequest(30);
 
+            givenCurrentUser(UserRole.MASTER, null, null);
             given(productRepository.findLockedByIdAndDeletedAtIsNull(productId)).willReturn(Optional.of(product));
 
             // when & then
@@ -404,6 +478,26 @@ class ProductServiceTest {
                     .isInstanceOf(ProductStockNotEnoughException.class);
 
             assertThat(product.getStockQuantity()).isEqualTo(10);
+        }
+
+        @Test
+        @DisplayName("상품 재고 감소 실패 - COMPANY_MANAGER 본인 업체 불일치")
+        void decreaseStock_companyManagerDifferentCompanyDenied() {
+            // given
+            UUID productId = UUID.randomUUID();
+            UUID productCompanyId = UUID.randomUUID();
+            UUID userCompanyId = UUID.randomUUID();
+            Product product = product(productId, "모니터A", UUID.randomUUID(), productCompanyId, 100);
+            ProductStockUpdateRequestDto request = stockRequest(30);
+
+            givenCurrentUser(UserRole.COMPANY_MANAGER, null, userCompanyId);
+            given(productRepository.findLockedByIdAndDeletedAtIsNull(productId)).willReturn(Optional.of(product));
+
+            // when & then
+            assertThatThrownBy(() -> productService.decreaseStock(userId, UserRole.COMPANY_MANAGER, productId, request))
+                    .isInstanceOf(ProductAccessDeniedException.class);
+
+            assertThat(product.getStockQuantity()).isEqualTo(100);
         }
     }
 
@@ -419,6 +513,7 @@ class ProductServiceTest {
             Product product = product(productId, "모니터A", UUID.randomUUID(), UUID.randomUUID(), 100);
             ProductStockUpdateRequestDto request = stockRequest(30);
 
+            givenCurrentUser(UserRole.MASTER, null, null);
             given(productRepository.findLockedByIdAndDeletedAtIsNull(productId)).willReturn(Optional.of(product));
 
             // when
@@ -436,11 +531,32 @@ class ProductServiceTest {
             UUID productId = UUID.randomUUID();
             ProductStockUpdateRequestDto request = stockRequest(30);
 
+            givenCurrentUser(UserRole.MASTER, null, null);
             given(productRepository.findLockedByIdAndDeletedAtIsNull(productId)).willReturn(Optional.empty());
 
             // when & then
             assertThatThrownBy(() -> productService.increaseStock(userId, userRole, productId, request))
                     .isInstanceOf(ProductNotFoundException.class);
+        }
+
+        @Test
+        @DisplayName("상품 재고 증가 실패 - COMPANY_MANAGER 본인 업체 불일치")
+        void increaseStock_companyManagerDifferentCompanyDenied() {
+            // given
+            UUID productId = UUID.randomUUID();
+            UUID productCompanyId = UUID.randomUUID();
+            UUID userCompanyId = UUID.randomUUID();
+            Product product = product(productId, "모니터A", UUID.randomUUID(), productCompanyId, 100);
+            ProductStockUpdateRequestDto request = stockRequest(30);
+
+            givenCurrentUser(UserRole.COMPANY_MANAGER, null, userCompanyId);
+            given(productRepository.findLockedByIdAndDeletedAtIsNull(productId)).willReturn(Optional.of(product));
+
+            // when & then
+            assertThatThrownBy(() -> productService.increaseStock(userId, UserRole.COMPANY_MANAGER, productId, request))
+                    .isInstanceOf(ProductAccessDeniedException.class);
+
+            assertThat(product.getStockQuantity()).isEqualTo(100);
         }
     }
 
@@ -490,6 +606,19 @@ class ProductServiceTest {
     private void givenCompanyExists(UUID companyId) {
         given(companyRepository.findByIdAndDeletedAtIsNull(companyId))
                 .willReturn(Optional.of(company(UUID.randomUUID())));
+    }
+
+    private void givenCurrentUser(UserRole role, UUID hubId, UUID companyId) {
+        UserResponse response = new UserResponse(
+                userId,
+                "testuser",
+                "slack",
+                role,
+                "APPROVED",
+                companyId,
+                hubId
+        );
+        given(userAuthorizationValidator.validateCurrentUser(userId, role)).willReturn(response);
     }
 
     private FeignException feignException(int status) {
