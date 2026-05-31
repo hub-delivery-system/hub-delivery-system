@@ -1,6 +1,8 @@
 package com.hubdelivery.auth.infrastructure.client;
 
 import org.springframework.http.MediaType;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -23,6 +25,11 @@ public class KeycloakAdminTokenClient {
     private final KeycloakAdminProperties keycloakAdminProperties;
     private final RestClient restClient = RestClient.create();
 
+    @Retryable(
+            retryFor = KeycloakUnavailableException.class,
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 300)
+    )
     public String issueAdminAccessToken() {
         if (!keycloakAdminProperties.isCredentialConfigured()) {
             log.error("Keycloak admin credentials are not configured.");
