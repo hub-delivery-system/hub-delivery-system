@@ -23,9 +23,14 @@
 
 | 메서드 | 경로 | 설명 |
 |--------|------|------|
-| POST | `/api/users/signup` | 사용자 가입 신청 |
-| POST | `/api/users/login` | 로그인 (Keycloak 토큰 발급) |
-| PATCH | `/api/users/{userId}/approve` | 사용자 승인 (MASTER) |
+| POST | `/api/v1/auth/signup` | 사용자 가입 신청 (status=`PENDING`) |
+| POST | `/api/v1/auth/login` | 로그인 (Keycloak Access Token 발급) |
+| PATCH | `/api/v1/users/{userId}/approve` | 사용자 승인 (`MASTER`, `HUB_MANAGER`) |
+| PATCH | `/api/v1/users/{userId}/reject` | 사용자 거절 (`MASTER`, `HUB_MANAGER`) |
+| GET | `/api/v1/users` | 사용자 목록 조회 (`MASTER`) |
+| GET | `/api/v1/users/{userId}` | 사용자 단건 조회 (`MASTER` 또는 본인) |
+| PUT | `/api/v1/users/{userId}` | 사용자 수정 (`MASTER`) |
+| DELETE | `/api/v1/users/{userId}` | 사용자 삭제(Soft Delete, `MASTER`) |
 
 ### hub-service
 

@@ -8,7 +8,7 @@
 
 ## 한 줄 요약
 
-`로그인 식별자는 slack_id`, `role/소속 확정은 승인 시점`, `인증/토큰은 Keycloak`, `user-service는 상태/정책 검증`.
+`로그인 식별자는 slack_id`, `가입 시 requestedRole→role 매핑 저장`, `승인/수정 시 affiliationName 기반 소속 자동 조회`, `인증/토큰은 Keycloak`.
 
 ---
 
@@ -19,6 +19,7 @@
 - 로그인: `slack_id + password`
 - 상태: `PENDING / APPROVED / REJECTED`
 - 권한: `MASTER / HUB_MANAGER / DELIVERY_MANAGER / COMPANY_MANAGER`
+- 가입 역할: `requestedRole` (`HUB_DELIVERY_MANAGER`, `COMPANY_DELIVERY_MANAGER` 포함)
 - Keycloak: 토큰 발급/비밀번호 검증 담당
 
 ---
@@ -95,12 +96,22 @@
 
 - 상태 enum: `PENDING`, `APPROVED`, `REJECTED`
 - 회원가입 직후 상태: `PENDING`
-- `role`은 회원가입 시점이 아니라 승인 시점에 확정
+- 회원가입 시 `requestedRole.toUserRole()` 결과를 `role`에 저장
+- 단, `PENDING` 상태에서는 권한이 활성화되지 않으며 로그인 불가
+- 승인 시 `status=APPROVED`로 변경되고 승인 후 로그인 가능
 
 ### 3-3. 소속 정보
 
-- 가입 요청: `affiliation_type`, `affiliation_name`
-- 승인 시: `hub_id/company_id`, 최종 권한 확정
+- 가입 요청: `requestedRole`, `affiliationName` 사용
+- `affiliationType`은 사용하지 않음
+- 승인/수정 시 `requestedRole + affiliationName`으로 허브/업체를 조회해 `hubId/companyId` 자동 결정
+- 수정 요청에 `hubId/companyId`를 포함할 수는 있지만, 이 값은 위 조회 결과와 일치할 때만 허용
+
+매핑 규칙:
+- `HUB_MANAGER` -> `role=HUB_MANAGER`, `hubId` 필요
+- `COMPANY_MANAGER` -> `role=COMPANY_MANAGER`, `companyId` 필요
+- `HUB_DELIVERY_MANAGER` -> `role=DELIVERY_MANAGER`, `hubId` 필요
+- `COMPANY_DELIVERY_MANAGER` -> `role=DELIVERY_MANAGER`, `companyId` 필요
 
 ---
 
@@ -114,6 +125,12 @@
 ### 4-2. 매핑 규칙
 
 - Keycloak `username` = 우리 서비스 `slack_id`
+
+### 4-3. 승인 시 프로비저닝
+
+- user-service 승인 로직에서 Keycloak Admin API를 호출해 사용자 생성/활성화/비밀번호 설정/Realm Role 부여를 수행
+- `requestedRole`이 배송 담당자인 경우 delivery-service에 delivery-manager 레코드 생성 요청
+- delivery-service가 정원 초과(`DELIVERY-MANAGER-005`)를 반환하면 user-service는 `USER-001`(409) 예외로 변환
 
 ---
 
