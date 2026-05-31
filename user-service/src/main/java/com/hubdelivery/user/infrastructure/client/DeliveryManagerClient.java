@@ -3,6 +3,8 @@ package com.hubdelivery.user.infrastructure.client;
 import java.util.UUID;
 
 import org.springframework.http.MediaType;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -31,10 +33,20 @@ public class DeliveryManagerClient {
     private final ObjectMapper objectMapper;
     private final RestClient restClient = RestClient.create();
 
+    @Retryable(
+            retryFor = CommonException.class,
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 300)
+    )
     public void createHubDeliveryManager(UUID userId, UUID hubId) {
         createDeliveryManager(userId, hubId, null, "HUB_DELIVERY");
     }
 
+    @Retryable(
+            retryFor = CommonException.class,
+            maxAttempts = 3,
+            backoff = @Backoff(delay = 300)
+    )
     public void createCompanyDeliveryManager(UUID userId, UUID companyId, UUID hubId) {
         createDeliveryManager(userId, hubId, companyId, "COMPANY_DELIVERY");
     }

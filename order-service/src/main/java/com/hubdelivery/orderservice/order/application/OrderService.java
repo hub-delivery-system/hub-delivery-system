@@ -2,6 +2,7 @@ package com.hubdelivery.orderservice.order.application;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.hubdelivery.common.event.OrderCancelledEvent;
 import com.hubdelivery.common.event.OrderCreatedEvent;
 import com.hubdelivery.common.response.PageResponse;
 import com.hubdelivery.common.security.UserRole;
@@ -13,11 +14,14 @@ import com.hubdelivery.orderservice.order.domain.exception.OrderException;
 import com.hubdelivery.orderservice.order.domain.repository.OrderRepository;
 import com.hubdelivery.orderservice.order.domain.repository.OutboxEventRepository;
 import com.hubdelivery.orderservice.order.infrastructure.client.product.ProductServiceClient;
+import com.hubdelivery.orderservice.order.infrastructure.client.product.ProductStockClient;
+import com.hubdelivery.orderservice.order.infrastructure.client.product.dto.ProductStockRequest;
 import com.hubdelivery.orderservice.order.infrastructure.client.user.UserServiceClient;
 import com.hubdelivery.orderservice.order.presentation.dto.OrderCreateRequest;
 import com.hubdelivery.orderservice.order.presentation.dto.OrderResponse;
 import com.hubdelivery.orderservice.order.presentation.dto.OrderSearchCondition;
 import com.hubdelivery.orderservice.order.presentation.dto.OrderUpdateRequest;
+import feign.FeignException;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +36,7 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final OutboxEventRepository outboxEventRepository;
     private final ProductServiceClient productServiceClient;
+    private final ProductStockClient productStockClient;
     private final UserServiceClient userServiceClient;
     private final ObjectMapper objectMapper;
 
@@ -40,7 +45,16 @@ public class OrderService {
         // 1. 상품의 hubId 조회 (HUB_MANAGER 권한 체크 및 필터링에 사용)
         UUID hubId = productServiceClient.getProduct(request.getProductId()).data().getHubId();
 
-        // 2. 주문 저장 (producerId는 현재 로그인한 사용자)
+        // 2. 재고 감소 (재고 부족 시 409 Conflict → OUT_OF_STOCK)
+        try {
+            productStockClient.decreaseStock(
+                    request.getProductId(),
+                    new ProductStockRequest(request.getAmount()));
+        } catch (FeignException.Conflict e) {
+            throw new OrderException(OrderErrorCode.OUT_OF_STOCK);
+        }
+
+        // 3. 주문 저장 (producerId는 현재 로그인한 사용자)
         Order order = Order.builder()
                 .producerId(UUID.fromString(userId))
                 .receiverId(request.getReceiverId())
@@ -52,7 +66,7 @@ public class OrderService {
 
         Order saved = orderRepository.save(order);
 
-        // 3. Outbox에 이벤트 저장 (같은 트랜잭션 — 배송 생성은 Kafka를 통해 비동기 처리)
+        // 4. Outbox에 ORDER_CREATED 이벤트 저장 (배송 생성은 Kafka를 통해 비동기 처리)
         outboxEventRepository.save(OutboxEvent.builder()
                 .eventType("ORDER_CREATED")
                 .aggregateId(saved.getId())
@@ -108,7 +122,20 @@ public class OrderService {
     public void delete(UUID id, String userId, UserRole role) {
         Order order = findActive(id);
         checkDeletePermission(role, userId, order);
+
+        // 1. 재고 복원 (트랜잭션 외부 Feign 호출 — 실패 시 예외로 롤백)
+        productStockClient.increaseStock(
+                order.getProductId(),
+                new ProductStockRequest(order.getAmount()));
+
+        // 2. 주문 소프트 딜리트 + ORDER_CANCELLED 이벤트 저장 (단일 트랜잭션)
         order.softDelete(userId);
+
+        outboxEventRepository.save(OutboxEvent.builder()
+                .eventType("ORDER_CANCELLED")
+                .aggregateId(order.getId())
+                .payload(toJson(OrderCancelledEvent.builder().orderId(order.getId()).build()))
+                .build());
     }
 
     // -----------------------------------------------------------------------

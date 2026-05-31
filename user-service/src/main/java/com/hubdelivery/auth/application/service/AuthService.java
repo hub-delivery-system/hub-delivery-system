@@ -1,6 +1,7 @@
 package com.hubdelivery.auth.application.service;
 
 import org.springframework.stereotype.Service;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
 
 import lombok.RequiredArgsConstructor;
@@ -20,6 +21,7 @@ import com.hubdelivery.auth.presentation.dto.response.SignupResponse;
 import com.hubdelivery.common.exception.CommonErrorCode;
 import com.hubdelivery.common.exception.CommonException;
 import com.hubdelivery.common.security.UserRole;
+import com.hubdelivery.user.application.service.UserProvisioningService;
 import com.hubdelivery.user.domain.entity.User;
 import com.hubdelivery.user.domain.repository.UserRepository;
 import com.hubdelivery.user.domain.type.UserStatus;
@@ -31,6 +33,8 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final KeycloakTokenClient keycloakTokenClient;
+    private final UserProvisioningService userProvisioningService;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional
     public SignupResponse signup(SignupRequest request) {
@@ -41,17 +45,25 @@ public class AuthService {
 
         validateRequestedRole(request.requestedRole());
         UserRole mappedRole = request.requestedRole().toUserRole();
+        String encodedPassword = passwordEncoder.encode(request.password());
 
         User savedUser = userRepository.save(
                 User.createPending(
                         request.username(),
                         request.slackId(),
-                        request.password(),
+                        encodedPassword,
                         request.requestedRole(),
                         request.affiliationName(),
                         mappedRole
                 )
         );
+
+        try {
+            userProvisioningService.provisionPendingUser(savedUser, request.password());
+        } catch (RuntimeException ex) {
+            compensateSignupProvisioning(savedUser, ex);
+            throw ex;
+        }
 
         return new SignupResponse(
                 savedUser.getUsername(),
@@ -95,6 +107,15 @@ public class AuthService {
     private void validateRequestedRole(RequestedRole requestedRole) {
         if (requestedRole == null) {
             throw new CommonException(CommonErrorCode.INVALID_INPUT_VALUE, "요청 역할은 필수입니다.");
+        }
+    }
+
+    private void compensateSignupProvisioning(User user, RuntimeException originalException) {
+        try {
+            userProvisioningService.compensateProvisioning(user);
+        } catch (RuntimeException compensationException) {
+            log.error("회원가입 보상 처리 실패. slackId={}", user.getSlackId(), compensationException);
+            originalException.addSuppressed(compensationException);
         }
     }
 

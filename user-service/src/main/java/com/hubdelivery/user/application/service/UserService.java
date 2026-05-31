@@ -1,12 +1,16 @@
 package com.hubdelivery.user.application.service;
 
-import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.util.StringUtils;
 
 import lombok.RequiredArgsConstructor;
@@ -15,7 +19,9 @@ import lombok.extern.slf4j.Slf4j;
 import com.hubdelivery.auth.domain.type.RequestedRole;
 import com.hubdelivery.common.exception.CommonErrorCode;
 import com.hubdelivery.common.exception.CommonException;
+import com.hubdelivery.common.response.PageResponse;
 import com.hubdelivery.common.security.UserRole;
+import com.hubdelivery.common.util.PageableUtils;
 import com.hubdelivery.user.domain.entity.User;
 import com.hubdelivery.user.domain.repository.UserRepository;
 import com.hubdelivery.user.domain.type.UserStatus;
@@ -29,6 +35,9 @@ import com.hubdelivery.user.presentation.dto.response.UserResponse;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class UserService {
+
+    private static final String DEFAULT_SORT_PROPERTY = "createdAt";
+    private static final Set<String> ALLOWED_SORT_PROPERTIES = Set.of("createdAt", "updatedAt");
 
     private final UserRepository userRepository;
     private final UserAffiliationResolverService userAffiliationResolverService;
@@ -59,10 +68,10 @@ public class UserService {
         user.approve(mappedRole, hubId, companyId);
 
         try {
-            userProvisioningService.provisionApprovedUser(user);
+            userProvisioningService.activateApprovedUser(user);
             deliveryManagerProvisionService.provisionIfRequired(user);
         } catch (RuntimeException ex) {
-            compensateProvisioning(user, ex);
+            rollbackApprovalProvisioning(user, ex);
             throw ex;
         }
 
@@ -75,10 +84,29 @@ public class UserService {
         );
     }
 
-    public List<UserResponse> getUsers() {
-        return userRepository.findAll().stream()
-                .map(this::toResponse)
-                .toList();
+    public PageResponse<UserResponse> getUsers(
+            Integer page,
+            Integer size,
+            String sort,
+            String username,
+            String name,
+            UserRole role,
+            UserStatus status,
+            UUID hubId,
+            UUID companyId
+    ) {
+        Pageable pageable = createPageable(page, size, sort);
+        Page<UserResponse> users = userRepository.searchUsers(
+                username,
+                name,
+                role,
+                status,
+                hubId,
+                companyId,
+                pageable
+        ).map(this::toResponse);
+
+        return PageResponse.from(users);
     }
 
     public UserResponse getUser(UUID userId) {
@@ -275,9 +303,9 @@ public class UserService {
     ) {
     }
 
-    private void compensateProvisioning(User user, RuntimeException originalException) {
+    private void rollbackApprovalProvisioning(User user, RuntimeException originalException) {
         try {
-            userProvisioningService.compensateProvisioning(user);
+            userProvisioningService.rollbackApprovalActivation(user);
         } catch (RuntimeException compensationException) {
             log.error("승인 보상 처리 실패. userId={}", user.getId(), compensationException);
             originalException.addSuppressed(compensationException);
@@ -291,6 +319,43 @@ public class UserService {
                     fieldName + "는 affiliationName/requestedRole 조건으로 조회된 값과 일치해야 합니다."
             );
         }
+    }
+
+    private Pageable createPageable(Integer page, Integer size, String sort) {
+        int pageNumber = page == null ? 0 : Math.max(page, 0);
+        int pageSize = PageableUtils.validateSize(size);
+        Sort resolvedSort = resolveSort(sort);
+
+        return PageRequest.of(pageNumber, pageSize, resolvedSort);
+    }
+
+    private Sort resolveSort(String sort) {
+        if (!StringUtils.hasText(sort)) {
+            return Sort.by(Sort.Direction.DESC, DEFAULT_SORT_PROPERTY);
+        }
+
+        String[] parts = sort.split(",", 2);
+        String property = parts[0].trim();
+        if (!StringUtils.hasText(property)) {
+            property = DEFAULT_SORT_PROPERTY;
+        }
+
+        if (!ALLOWED_SORT_PROPERTIES.contains(property)) {
+            throw new CommonException(
+                    CommonErrorCode.INVALID_INPUT_VALUE,
+                    "sort는 createdAt,updatedAt만 지원합니다."
+            );
+        }
+
+        Sort.Direction direction = parts.length < 2
+                ? Sort.Direction.DESC
+                : Sort.Direction.fromOptionalString(parts[1].trim())
+                .orElseThrow(() -> new CommonException(
+                        CommonErrorCode.INVALID_INPUT_VALUE,
+                        "sort direction은 ASC 또는 DESC만 지원합니다."
+                ));
+
+        return Sort.by(direction, property);
     }
 
     private String currentActor() {
