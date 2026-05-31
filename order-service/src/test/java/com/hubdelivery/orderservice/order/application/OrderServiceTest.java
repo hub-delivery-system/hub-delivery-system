@@ -10,7 +10,9 @@ import com.hubdelivery.orderservice.order.domain.repository.OrderRepository;
 import com.hubdelivery.orderservice.order.domain.repository.OutboxEventRepository;
 import com.hubdelivery.orderservice.order.domain.type.OrderStatus;
 import com.hubdelivery.orderservice.order.infrastructure.client.product.ProductServiceClient;
+import com.hubdelivery.orderservice.order.infrastructure.client.product.ProductStockClient;
 import com.hubdelivery.orderservice.order.infrastructure.client.product.dto.ProductResponse;
+import com.hubdelivery.orderservice.order.infrastructure.client.product.dto.ProductStockRequest;
 import com.hubdelivery.orderservice.order.infrastructure.client.user.UserServiceClient;
 import com.hubdelivery.orderservice.order.infrastructure.client.user.dto.UserResponse;
 import com.hubdelivery.orderservice.order.presentation.dto.OrderCreateRequest;
@@ -31,8 +33,11 @@ import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.then;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class OrderServiceTest {
@@ -48,6 +53,9 @@ class OrderServiceTest {
 
     @Mock
     private ProductServiceClient productServiceClient;
+
+    @Mock
+    private ProductStockClient productStockClient;
 
     @Mock
     private UserServiceClient userServiceClient;
@@ -133,8 +141,8 @@ class OrderServiceTest {
     class CreateOrder {
 
         @Test
-        @DisplayName("주문 생성 시 Outbox 이벤트가 저장된다")
-        void create_success_outboxEventSaved() {
+        @DisplayName("주문 생성 시 재고 감소 후 Outbox 이벤트가 저장된다")
+        void create_success_decreasesStockAndSavesOutbox() {
             // given
             String userId = UUID.randomUUID().toString();
             UUID hubId = UUID.randomUUID();
@@ -155,8 +163,81 @@ class OrderServiceTest {
             // then
             assertThat(response).isNotNull();
             assertThat(response.getStatus()).isEqualTo(OrderStatus.PENDING);
-            // deliveryId는 Kafka 비동기 처리 전이므로 null
-            assertThat(response.getDeliveryId()).isNull();
+            assertThat(response.getDeliveryId()).isNull(); // Kafka 비동기 처리 전
+            verify(productStockClient).decreaseStock(any(), any(ProductStockRequest.class));
+        }
+
+        @Test
+        @DisplayName("재고 부족(409 Conflict) 시 OUT_OF_STOCK 예외가 발생한다")
+        void create_stockInsufficient_throwsOutOfStock() {
+            // given
+            String userId = UUID.randomUUID().toString();
+            UUID hubId = UUID.randomUUID();
+            OrderCreateRequest request = buildCreateRequest();
+
+            ProductResponse productResp = mock(ProductResponse.class);
+            given(productResp.getHubId()).willReturn(hubId);
+            given(productServiceClient.getProduct(any())).willReturn(ApiResponse.ok(productResp));
+
+            given(productStockClient.decreaseStock(any(), any()))
+                    .willThrow(feign.FeignException.Conflict.class);
+
+            // when & then
+            assertThatThrownBy(() -> orderService.create(request, userId, UserRole.COMPANY_MANAGER))
+                    .isInstanceOf(OrderException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(OrderErrorCode.OUT_OF_STOCK);
+        }
+    }
+
+    @Nested
+    @DisplayName("주문 삭제")
+    class DeleteOrder {
+
+        @Test
+        @DisplayName("주문 삭제 시 재고가 복원되고 ORDER_CANCELLED Outbox 이벤트가 저장된다")
+        void delete_success_restoresStockAndSavesOutbox() {
+            // given
+            UUID orderId = UUID.randomUUID();
+            String userId = UUID.randomUUID().toString();
+            Order order = buildOrder(orderId, OrderStatus.PENDING,
+                    UUID.fromString(userId), UUID.randomUUID(), UUID.randomUUID());
+            given(orderRepository.findByIdAndDeletedAtIsNull(orderId)).willReturn(Optional.of(order));
+            given(outboxEventRepository.save(any())).willAnswer(inv -> inv.getArgument(0));
+
+            // when
+            orderService.delete(orderId, userId, UserRole.MASTER);
+
+            // then
+            verify(productStockClient).increaseStock(any(), any(ProductStockRequest.class));
+            then(outboxEventRepository).should().save(
+                    argThat(event -> "ORDER_CANCELLED".equals(event.getEventType())
+                            && orderId.equals(event.getAggregateId()))
+            );
+        }
+
+        @Test
+        @DisplayName("HUB_MANAGER가 담당 허브가 아닌 주문 삭제 시 ORDER_FORBIDDEN 예외가 발생한다")
+        void delete_hubManagerOtherHub_throwsForbidden() {
+            // given
+            UUID orderId = UUID.randomUUID();
+            UUID orderHubId = UUID.randomUUID();
+            UUID userHubId = UUID.randomUUID();
+            String userId = UUID.randomUUID().toString();
+
+            Order order = buildOrder(orderId, OrderStatus.PENDING,
+                    UUID.randomUUID(), UUID.randomUUID(), orderHubId);
+            given(orderRepository.findByIdAndDeletedAtIsNull(orderId)).willReturn(Optional.of(order));
+
+            UserResponse userResp = mock(UserResponse.class);
+            given(userResp.getHubId()).willReturn(userHubId);
+            given(userServiceClient.getUser(any())).willReturn(ApiResponse.ok(userResp));
+
+            // when & then
+            assertThatThrownBy(() -> orderService.delete(orderId, userId, UserRole.HUB_MANAGER))
+                    .isInstanceOf(OrderException.class)
+                    .extracting("errorCode")
+                    .isEqualTo(OrderErrorCode.ORDER_FORBIDDEN);
         }
     }
 
