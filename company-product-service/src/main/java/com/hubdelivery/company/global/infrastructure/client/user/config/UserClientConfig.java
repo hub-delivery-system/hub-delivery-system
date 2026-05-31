@@ -1,4 +1,4 @@
-package com.hubdelivery.company.global.infrastructure.client.config;
+package com.hubdelivery.company.global.infrastructure.client.user.config;
 
 import feign.Retryer;
 import org.springframework.context.annotation.Bean;

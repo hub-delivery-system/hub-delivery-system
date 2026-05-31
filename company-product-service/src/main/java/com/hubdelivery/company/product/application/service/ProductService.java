@@ -3,8 +3,9 @@ package com.hubdelivery.company.product.application.service;
 import com.hubdelivery.common.response.PageResponse;
 import com.hubdelivery.common.security.UserRole;
 import com.hubdelivery.company.company.domain.repository.CompanyRepository;
-import com.hubdelivery.company.global.infrastructure.client.HubClient;
-import com.hubdelivery.company.global.infrastructure.client.dto.UserResponse;
+import com.hubdelivery.company.global.infrastructure.client.hub.HubClient;
+import com.hubdelivery.company.global.infrastructure.client.user.dto.UserResponse;
+import com.hubdelivery.company.global.security.UserAuthorizationValidator;
 import com.hubdelivery.company.global.util.SearchPageableUtils;
 import com.hubdelivery.company.product.domain.entity.Product;
 import com.hubdelivery.company.product.domain.exception.*;
@@ -31,13 +32,14 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final CompanyRepository companyRepository;
     private final HubClient hubClient;
+    private final UserAuthorizationValidator userAuthorizationValidator;
 
     /** 상품 생성 로직 */
     @Transactional
     public ProductResponseDto createProduct(UUID userId, UserRole userRole, ProductCreateRequestDto request) {
-        // TODO: user-service 의 GET /api/v1/users/{user_id} 구현 완료 후 재활성화
-        // UserResponse user = userAuthorizationValidator.validateCurrentUser(userId, userRole);
-        // validateProductCreateAuthority(user, request.hubId(), request.companyId());
+        UserResponse user = userAuthorizationValidator.validateCurrentUser(userId, userRole);
+
+        validateProductCreateAuthority(user, request.hubId(), request.companyId());
         validateHubExists(userId, userRole, request.hubId());
         validateCompanyExists(request.companyId());
 
@@ -63,13 +65,11 @@ public class ProductService {
     /** 상품 수정 로직 */
     @Transactional
     public ProductResponseDto updateProduct(UUID userId, UserRole userRole, UUID productId, ProductUpdateRequestDto request) {
-        // TODO: user-service 의 GET /api/v1/users/{user_id} 구현 완료 후 재활성화
-        // UserResponse user = userAuthorizationValidator.validateCurrentUser(userId, userRole);
+        UserResponse user = userAuthorizationValidator.validateCurrentUser(userId, userRole);
         Product product = productRepository.findByIdAndDeletedAtIsNull(productId)
                 .orElseThrow(ProductNotFoundException::new);
 
-        // TODO: user-service 의 GET /api/v1/users/{user_id} 구현 완료 후 재활성화
-        // validateProductUpdateAuthority(user, product, request.hubId(), request.companyId());
+        validateProductUpdateAuthority(user, product, request.hubId(), request.companyId());
         validateHubExists(userId, userRole, request.hubId());
         validateCompanyExists(request.companyId());
 
@@ -81,28 +81,23 @@ public class ProductService {
     /** 상품 삭제 로직 */
     @Transactional
     public void deleteProduct(UUID userId, UserRole userRole, UUID productId) {
-        // TODO: user-service 의 GET /api/v1/users/{user_id} 구현 완료 후 재활성화
-        // UserResponse user = userAuthorizationValidator.validateCurrentUser(userId, userRole);
+        UserResponse user = userAuthorizationValidator.validateCurrentUser(userId, userRole);
         Product product = productRepository.findByIdAndDeletedAtIsNull(productId)
                 .orElseThrow(ProductNotFoundException::new);
 
-        // TODO: user-service 의 GET /api/v1/users/{user_id} 구현 완료 후 재활성화
-        // validateProductDeleteAuthority(user, product);
+        validateProductDeleteAuthority(user, product);
 
-        // TODO: user-service 연동 후 userId 대신 username 으로 기록
         product.softDelete(userId.toString());
     }
 
     /** 상품 재고 감소 로직 */
     @Transactional
     public ProductResponseDto decreaseStock(UUID userId, UserRole userRole, UUID productId, ProductStockUpdateRequestDto request) {
-        // TODO: user-service 의 GET /api/v1/users/{user_id} 구현 완료 후 재활성화
-        // UserResponse user = userAuthorizationValidator.validateCurrentUser(userId, userRole);
+        UserResponse user = userAuthorizationValidator.validateCurrentUser(userId, userRole);
         Product product = productRepository.findLockedByIdAndDeletedAtIsNull(productId)
                 .orElseThrow(ProductNotFoundException::new);
 
-        // TODO: user-service 의 GET /api/v1/users/{user_id} 구현 완료 후 재활성화
-        // validateProductStockAuthority(user, product);
+        validateProductStockAuthority(user, product);
         product.decreaseStock(request.quantity());
 
         return ProductResponseDto.from(product);
@@ -111,13 +106,11 @@ public class ProductService {
     /** 상품 재고 증가 로직 */
     @Transactional
     public ProductResponseDto increaseStock(UUID userId, UserRole userRole, UUID productId, ProductStockUpdateRequestDto request) {
-        // TODO: user-service 의 GET /api/v1/users/{user_id} 구현 완료 후 재활성화
-        // UserResponse user = userAuthorizationValidator.validateCurrentUser(userId, userRole);
+        UserResponse user = userAuthorizationValidator.validateCurrentUser(userId, userRole);
         Product product = productRepository.findLockedByIdAndDeletedAtIsNull(productId)
                 .orElseThrow(ProductNotFoundException::new);
 
-        // TODO: user-service 의 GET /api/v1/users/{user_id} 구현 완료 후 재활성화
-        // validateProductStockAuthority(user, product);
+        validateProductStockAuthority(user, product);
         product.increaseStock(request.quantity());
 
         return ProductResponseDto.from(product);

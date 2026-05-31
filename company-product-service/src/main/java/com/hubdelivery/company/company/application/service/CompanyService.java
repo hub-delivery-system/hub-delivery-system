@@ -11,8 +11,9 @@ import com.hubdelivery.company.company.domain.repository.CompanyRepository;
 import com.hubdelivery.company.company.presentation.dto.request.CompanyCreateRequestDto;
 import com.hubdelivery.company.company.presentation.dto.request.CompanyUpdateRequestDto;
 import com.hubdelivery.company.company.presentation.dto.response.CompanyResponseDto;
-import com.hubdelivery.company.global.infrastructure.client.HubClient;
-import com.hubdelivery.company.global.infrastructure.client.dto.UserResponse;
+import com.hubdelivery.company.global.infrastructure.client.hub.HubClient;
+import com.hubdelivery.company.global.infrastructure.client.user.dto.UserResponse;
+import com.hubdelivery.company.global.security.UserAuthorizationValidator;
 import com.hubdelivery.company.global.util.SearchPageableUtils;
 import feign.FeignException;
 import lombok.RequiredArgsConstructor;
@@ -31,15 +32,14 @@ public class CompanyService {
 
     private final CompanyRepository companyRepository;
     private final HubClient hubClient;
-    // TODO: user-service 의 GET /api/v1/users/{user_id} 구현 완료 후 재활성화
-    // private final UserAuthorizationValidator userAuthorizationValidator;
+    private final UserAuthorizationValidator userAuthorizationValidator;
 
     /** 업체 생성 로직 */
     @Transactional
     public CompanyResponseDto createCompany(UUID userId, UserRole userRole, CompanyCreateRequestDto request) {
-        // TODO: user-service 의 GET /api/v1/users/{user_id} 구현 완료 후 재활성화
-        // UserResponse user = userAuthorizationValidator.validateCurrentUser(userId, userRole);
-        // validateCompanyCreateAuthority(user, request.hubId());
+        UserResponse user = userAuthorizationValidator.validateCurrentUser(userId, userRole);
+
+        validateCompanyCreateAuthority(user, request.hubId());
         validateHubExists(userId, userRole, request.hubId());
 
         Company company = companyRepository.save(request.toEntity());
@@ -64,13 +64,11 @@ public class CompanyService {
     /** 업체 수정 로직 */
     @Transactional
     public CompanyResponseDto updateCompany(UUID userId, UserRole userRole, UUID companyId, CompanyUpdateRequestDto request) {
-        // TODO: user-service 의 GET /api/v1/users/{user_id} 구현 완료 후 재활성화
-        // UserResponse user = userAuthorizationValidator.validateCurrentUser(userId, userRole);
+        UserResponse user = userAuthorizationValidator.validateCurrentUser(userId, userRole);
         Company company = companyRepository.findByIdAndDeletedAtIsNull(companyId)
                 .orElseThrow(CompanyNotFoundException::new);
 
-        // TODO: user-service 의 GET /api/v1/users/{user_id} 구현 완료 후 재활성화
-        // validateCompanyUpdateAuthority(user, company, companyId, request.hubId());
+        validateCompanyUpdateAuthority(user, company, companyId, request.hubId());
         validateHubExists(userId, userRole, request.hubId());
 
         company.update(request.companyName(), request.companyType(), request.hubId(), request.address());
@@ -81,15 +79,12 @@ public class CompanyService {
     /** 업체 삭제 로직 */
     @Transactional
     public void deleteCompany(UUID userId, UserRole userRole, UUID companyId) {
-        // TODO: user-service 의 GET /api/v1/users/{user_id} 구현 완료 후 재활성화
-        // UserResponse user = userAuthorizationValidator.validateCurrentUser(userId, userRole);
+        UserResponse user = userAuthorizationValidator.validateCurrentUser(userId, userRole);
         Company company = companyRepository.findByIdAndDeletedAtIsNull(companyId)
                 .orElseThrow(CompanyNotFoundException::new);
 
-        // TODO: user-service 의 GET /api/v1/users/{user_id} 구현 완료 후 재활성화
-        // validateCompanyDeleteAuthority(user, company);
+        validateCompanyDeleteAuthority(user, company);
 
-        // TODO: user-service 연동 후 userId 대신 username 으로 기록
         company.softDelete(userId.toString());
     }
 
