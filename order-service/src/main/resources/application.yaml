@@ -37,11 +37,23 @@ springdoc:
   api-docs:
     path: /v3/api-docs
 
+logging:
+  pattern:
+    level: "%5p [${spring.application.name:}, traceId=%X{traceId:-}, spanId=%X{spanId:-}]"
+
 management:
   endpoints:
     web:
       exposure:
         include: health,info
+  tracing:
+    enabled: true
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      enabled: true
+      endpoint: http://${ZIPKIN_HOST:localhost}:${ZIPKIN_PORT:9411}/api/v2/spans
 
 ---
 spring:
