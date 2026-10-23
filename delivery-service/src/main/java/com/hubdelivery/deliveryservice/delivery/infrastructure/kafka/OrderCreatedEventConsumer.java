@@ -1,5 +1,6 @@
 package com.hubdelivery.deliveryservice.delivery.infrastructure.kafka;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hubdelivery.common.event.OrderCreatedEvent;
 import com.hubdelivery.deliveryservice.delivery.application.DeliveryService;
@@ -16,14 +17,11 @@ public class OrderCreatedEventConsumer {
     private final DeliveryService deliveryService;
     private final ObjectMapper objectMapper;
 
+    // 처리 실패 시 예외를 던져 KafkaConsumerConfig의 재시도·DLT 처리에 맡긴다
     @KafkaListener(topics = "order.created", groupId = "delivery-service")
-    public void consume(String payload) {
-        try {
-            OrderCreatedEvent event = objectMapper.readValue(payload, OrderCreatedEvent.class);
-            log.debug("order.created 이벤트 수신: orderId={}", event.getOrderId());
-            deliveryService.createFromEvent(event);
-        } catch (Exception e) {
-            log.error("order.created 이벤트 처리 실패: payload={}", payload, e);
-        }
+    public void consume(String payload) throws JsonProcessingException {
+        OrderCreatedEvent event = objectMapper.readValue(payload, OrderCreatedEvent.class);
+        log.debug("order.created 이벤트 수신: orderId={}", event.getOrderId());
+        deliveryService.createFromEvent(event);
     }
 }
