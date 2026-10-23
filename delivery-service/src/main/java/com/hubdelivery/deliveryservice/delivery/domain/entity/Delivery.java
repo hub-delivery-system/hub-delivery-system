@@ -27,7 +27,8 @@ public class Delivery extends BaseEntity {
     @Column(updatable = false, nullable = false)
     private UUID id;
 
-    @Column(nullable = false, updatable = false)
+    // 주문당 배송은 1건 — order.created 중복 수신 시 최종 방어선
+    @Column(nullable = false, updatable = false, unique = true)
     private UUID orderId;
 
     @Enumerated(EnumType.STRING)

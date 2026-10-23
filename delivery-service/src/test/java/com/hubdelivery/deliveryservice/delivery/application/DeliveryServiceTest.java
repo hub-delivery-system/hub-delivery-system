@@ -1,5 +1,6 @@
 package com.hubdelivery.deliveryservice.delivery.application;
 
+import com.hubdelivery.common.event.OrderCreatedEvent;
 import com.hubdelivery.common.response.ApiResponse;
 import com.hubdelivery.common.security.UserRole;
 import com.hubdelivery.deliveryservice.delivery.domain.entity.Delivery;
@@ -23,6 +24,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -42,6 +44,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 
@@ -333,6 +336,79 @@ class DeliveryServiceTest {
 
             // then
             assertThat(response.getStatus()).isEqualTo(DeliveryStatus.DELIVERED);
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // 주문 생성 이벤트 연동 테스트
+    // -----------------------------------------------------------------------
+
+    @Nested
+    @DisplayName("주문 생성 이벤트 연동")
+    class CreateFromEvent {
+
+        private OrderCreatedEvent buildEvent(UUID orderId, UUID endHubId, UUID managerId) {
+            return OrderCreatedEvent.builder()
+                    .orderId(orderId)
+                    .startHubId(UUID.randomUUID())
+                    .endHubId(endHubId)
+                    .address("서울시 강남구")
+                    .userId(UUID.randomUUID())
+                    .slackId("slack-test")
+                    .deliveryManagerId(managerId)
+                    .routes(List.of(OrderCreatedEvent.RouteInfo.builder()
+                            .sequence(1)
+                            .startHubId(UUID.randomUUID())
+                            .endHubId(endHubId)
+                            .estimatedDistance(BigDecimal.valueOf(100.0))
+                            .estimatedDuration(60)
+                            .deliveryManagerId(UUID.randomUUID())
+                            .build()))
+                    .build();
+        }
+
+        @Test
+        @DisplayName("처음 수신한 주문이면 배송을 생성하고 flush 후 delivery.created를 발행한다")
+        void createFromEvent_newOrder_createsDeliveryAndPublishes() {
+            // given
+            UUID orderId = UUID.randomUUID();
+            UUID endHubId = UUID.randomUUID();
+            UUID managerId = UUID.randomUUID();
+            OrderCreatedEvent event = buildEvent(orderId, endHubId, managerId);
+
+            given(deliveryRepository.existsByOrderId(orderId)).willReturn(false);
+            Delivery savedDelivery = buildDelivery(UUID.randomUUID(), DeliveryStatus.HUB_PENDING,
+                    event.getStartHubId(), endHubId, managerId);
+            given(deliveryRepository.save(any())).willReturn(savedDelivery);
+            given(deliveryRouteRepository.findLatestHubDeliveryManagerId(any()))
+                    .willReturn(new PageImpl<>(Collections.emptyList()));
+            given(deliveryRouteRepository.saveAll(any())).willReturn(List.of());
+
+            // when
+            deliveryService.createFromEvent(event);
+
+            // then — 유니크 제약 위반이 발행 전에 드러나도록 flush가 발행보다 먼저 호출된다
+            InOrder order = inOrder(deliveryRepository, deliveryEventProducer);
+            order.verify(deliveryRepository).save(any());
+            order.verify(deliveryRepository).flush();
+            order.verify(deliveryEventProducer).publishDeliveryCreated(orderId, savedDelivery.getId());
+        }
+
+        @Test
+        @DisplayName("이미 배송이 생성된 주문이면 중복 이벤트로 보고 아무 동작도 하지 않는다")
+        void createFromEvent_duplicateOrder_skips() {
+            // given
+            UUID orderId = UUID.randomUUID();
+            OrderCreatedEvent event = buildEvent(orderId, UUID.randomUUID(), UUID.randomUUID());
+            given(deliveryRepository.existsByOrderId(orderId)).willReturn(true);
+
+            // when
+            deliveryService.createFromEvent(event);
+
+            // then
+            then(deliveryRepository).should(never()).save(any());
+            then(deliveryRouteRepository).should(never()).saveAll(any());
+            then(deliveryEventProducer).shouldHaveNoInteractions();
         }
     }
 

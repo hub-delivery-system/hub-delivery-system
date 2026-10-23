@@ -26,11 +26,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class DeliveryService {
@@ -52,8 +54,15 @@ public class DeliveryService {
     // Kafka Consumer에서 역할 검증 없이 직접 호출하는 내부 생성 메서드
     @Transactional
     public void createFromEvent(OrderCreatedEvent event) {
+        // Outbox 재발행으로 같은 이벤트가 다시 올 수 있으므로 이미 처리된 주문은 건너뛴다
+        if (deliveryRepository.existsByOrderId(event.getOrderId())) {
+            log.info("이미 배송이 생성된 주문 — 중복 이벤트 무시: orderId={}", event.getOrderId());
+            return;
+        }
         DeliveryCreateRequest request = toDeliveryCreateRequest(event);
         DeliveryResponse response = createInternal(request);
+        // 동시 중복 수신 시 유니크 제약 위반을 발행 전에 드러내기 위해 flush
+        deliveryRepository.flush();
         deliveryEventProducer.publishDeliveryCreated(event.getOrderId(), response.getId());
     }
 

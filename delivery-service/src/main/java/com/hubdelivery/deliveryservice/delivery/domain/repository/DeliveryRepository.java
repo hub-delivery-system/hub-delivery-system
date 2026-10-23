@@ -15,6 +15,9 @@ public interface DeliveryRepository extends JpaRepository<Delivery, UUID>, Deliv
 
     Optional<Delivery> findByOrderIdAndDeletedAtIsNull(UUID orderId);
 
+    // order.created 중복 수신 판단용 — 취소(소프트 딜리트)된 배송도 포함해 조회
+    boolean existsByOrderId(UUID orderId);
+
     Page<Delivery> findAllByDeletedAtIsNull(Pageable pageable);
 
     // HUB_MANAGER: 담당 허브가 출발지 또는 도착지인 배송 목록
